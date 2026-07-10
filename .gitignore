@@ -1,0 +1,5 @@
+.DS_Store
+__pycache__/
+*.pyc
+# Raw deep-research exports (18MB of .docx, kept local; provenance summarised in data/SOURCES.md)
+internunion_Google deep research prompts/
