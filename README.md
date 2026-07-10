@@ -22,6 +22,21 @@ collectively-bargained internship conditions.
 - **[`data/SOURCES.md`](data/SOURCES.md)** — the rent constant, the housing-index method,
   the research method box, and provenance.
 - **[`data/check.py`](data/check.py)** — validates the dataset and computes the housing index.
+- **[`build.py`](build.py)** — zero-dependency generator: turns the CSV into a static,
+  search- and AI-discoverable site (`public/`) with schema.org `Dataset` JSON-LD, `robots.txt`,
+  `llms.txt`, `sitemap.xml`, and an answer-first page.
+
+## Run & deploy
+
+```sh
+python3 build.py            # generates public/
+cd public && python3 -m http.server 8000   # preview at localhost:8000
+```
+
+Deploy the `public/` folder on any static host. On **Railway** or **Cloudflare Pages**: build
+command `python3 build.py`, output/publish directory `public`. **Before deploying**, set `DOMAIN`
+at the top of [`build.py`](build.py) to your real domain — it drives every canonical URL, the
+sitemap, and the JSON-LD IDs.
 
 ### The response-status column
 Every row starts as `classified` (compiled from public research, not yet verified). It becomes
