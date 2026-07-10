@@ -1,0 +1,11 @@
+# Railway build config. Build step generates public/, start step serves it on $PORT.
+# ponytail: python http.server is fine for a low-traffic static open-data site.
+#           If traffic grows, swap the start cmd for Caddy/nginx or move to Cloudflare Pages.
+[phases.setup]
+nixPkgs = ["python3"]
+
+[phases.build]
+cmds = ["python3 build.py"]
+
+[start]
+cmd = "python3 -m http.server ${PORT:-8080} --directory public"

@@ -11,7 +11,7 @@ JSON-LD, robots.txt allowing AI crawlers, llms.txt, sitemap.xml, visible date.
 import csv, shutil, html, json, datetime, pathlib
 
 # --- one thing to change: your real domain + TLD -----------------------------
-DOMAIN = "https://internunion.eu"          # ponytail: single source of truth for all URLs
+DOMAIN = "https://internunion.com"         # ponytail: single source of truth for all URLs
 # -----------------------------------------------------------------------------
 ROOM_RENT_EUR = 509                        # market-wide shared room, Brussels (Brukot/Federia 2025)
 LIVABLE_FLOOR_EUR = 770                    # rent+utilities+groceries+transport(<25, registered)
