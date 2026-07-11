@@ -224,9 +224,13 @@ for f in bgeo["features"]:
     commune_labels.append(f'<text class="cl" x="{cx:.0f}" y="{cy:.0f}">{esc(f["properties"]["name"])}</text>')
 
 PAID_COLOR = {"yes": "#0b5", "partial": "#f0a33a", "no": "#d1495b", "unknown": "#999"}
-bmap = [r for r in brussels if r["lat"]]        # Brussels orgs with coordinates
+blist = sorted(brussels, key=lambda r: r["name"])   # all Brussels orgs; map dot only if geocoded
 markers, orgs_json = [], []
-for i, r in enumerate(bmap):
+for i, r in enumerate(blist):
+    orgs_json.append({"i": i, "name": r["name"], "type": r["type"], "paid": r["paid"],
+                      "status": r["response_status"]})
+    if not r["lat"]:
+        continue
     x, y = bproject(float(r["lon"]), float(r["lat"]))
     s = r["monthly_stipend_eur"].strip()
     tip = (f'{r["name"]} - {r["type"]}. '
@@ -235,8 +239,7 @@ for i, r in enumerate(bmap):
     markers.append(f'<circle class="mk" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="6" '
                    f'fill="{PAID_COLOR.get(r["paid"], "#999")}" stroke="#fff" stroke-width="1.5" '
                    f'data-tip="{esc(tip)}" tabindex="0"><title>{esc(tip)}</title></circle>')
-    orgs_json.append({"i": i, "name": r["name"], "type": r["type"], "paid": r["paid"],
-                      "status": r["response_status"]})
+n_mapped = len(markers)
 
 svg_city = f'''<svg viewBox="-6 -6 {BW+12:.0f} {BH+12:.0f}" class="map citymap" role="img"
   aria-label="Map of the Brussels-Capital Region and its 19 communes showing internship-hosting organisations.">
@@ -247,7 +250,7 @@ svg_city = f'''<svg viewBox="-6 -6 {BW+12:.0f} {BH+12:.0f}" class="map citymap" 
 
 def city_list_rows():
     out = []
-    for i, r in enumerate(bmap):
+    for i, r in enumerate(blist):
         label, cls = STATUS[r["response_status"]]
         s = r["monthly_stipend_eur"].strip()
         pay = f'&euro;{float(s):.0f}' if s else '&mdash;'
@@ -257,7 +260,7 @@ def city_list_rows():
                    f'<td><a href="{esc(r["source_url"])}" rel="nofollow">source</a></td></tr>')
     return "\n".join(out)
 
-SECTORS = sorted(set(r["type"] for r in bmap))
+SECTORS = sorted(set(r["type"] for r in blist))
 
 # ============================================================ structured data (index only)
 graph = {"@context": "https://schema.org", "@graph": [
@@ -527,6 +530,9 @@ city_body = f"""
     <span style="color:var(--mut)">&mdash; markers geocoded from public addresses (OpenStreetMap)</span>
   </div>
   <div class="mapwrap">{svg_city}</div>
+  <p style="color:var(--mut);font-size:.82rem;margin:.3rem 0 0">{n_mapped} of {len(blist)} organisations
+  are placed on the map; the rest are in the list below (address still to confirm). Pay marked
+  <em>unknown</em> is what the questionnaire will fill in.</p>
 
   <div class="scroll"><table>
     <thead><tr><th>Organisation</th><th>Type</th><th>Paid</th><th class="num">Stipend/mo</th>
@@ -750,7 +756,7 @@ PAGES = {
         f"pay floor for interns.", index_body, "/", head_extra=index_head,
         tail='<div id="tip"></div>\n<script>' + TIP_JS + '</script>'),
     "city.html": shell("Brussels internship dashboard &mdash; filterable map | internunion",
-        f"A filterable map of {len(bmap)} organisations in Brussels that host interns: sector, whether "
+        f"A filterable map of {len(blist)} organisations in Brussels that host interns: sector, whether "
         "paid, stipend and the response-status ledger. More EU cities coming soon.", city_body, "/city.html",
         tail='<div id="tip"></div>\n<script>' + TIP_JS + FILTER_JS + '</script>'),
     "submit.html": shell("Submit a place or your internship conditions | internunion",
@@ -788,13 +794,12 @@ assert len(countries) == 27, f"expected 27 EU countries, got {len(countries)}"
 assert '<svg' in idx and idx.count("<path") >= 27, "Europe map paths missing"
 assert '"@type": "Dataset"' in idx, "Dataset JSON-LD missing"
 assert idx.count("<tr>") == len(countries) + 1, "index should hold only the country table"
-assert city.count('class="mk"') == len(bmap), "city markers != geocoded Brussels orgs"
-assert city.count("<tr") == len(bmap) + 1, "city list rows != geocoded Brussels orgs"
-assert len(bmap) == len(brussels), f"{len(brussels)-len(bmap)} Brussels orgs missing coordinates"
+assert city.count('class="mk"') == n_mapped, "city markers != geocoded Brussels orgs"
+assert city.count("<tr") == len(blist) + 1, "city list rows != all Brussels orgs"
 json.loads(idx.split('application/ld+json">', 1)[1].split("</script>", 1)[0])  # JSON-LD parses
 for p in PAGES:                            # every page has nav, main and footer
     h = (OUT / p).read_text(encoding="utf-8")
     assert 'class="nav"' in h and "<main>" in h and 'class="foot"' in h, f"{p} missing shell"
 assert FORM_ENDPOINT in (OUT / "submit.html").read_text(encoding="utf-8"), "form endpoint missing"
 print(f"built public/  ({len(PAGES)} pages, {len(countries)} countries, {len(no_floor)} no-floor, "
-      f"{len(bmap)} Brussels orgs mapped, median EUR {median:.0f})")
+      f"{len(blist)} Brussels orgs ({n_mapped} mapped), median EUR {median:.0f})")
