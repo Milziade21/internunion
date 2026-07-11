@@ -17,7 +17,14 @@ collectively-bargained internship conditions.
 
 ## What's here now
 
-- **[`data/institutions.csv`](data/institutions.csv)** — the seed directory: organisation,
+The homepage is a **Europe choropleth** — each country shaded by intern pay ÷ capital-city room
+rent, grey hatching where there is no legal pay floor — with city pins for coverage (Brussels live,
+other hubs coming soon), then the full Brussels directory, then a submit CTA. The map is projected
+from a GeoJSON at build time; no mapping library, no tiles.
+
+- **[`data/countries.csv`](data/countries.csv)** — EU-27: intern pay, capital room rent, affordability
+  ratio, minimum wage, and the **legal status of unpaid internships** per country.
+- **[`data/institutions.csv`](data/institutions.csv)** — the Brussels directory: organisation,
   type, city, internship open?, paid?, monthly stipend, **response status**, address, source.
 - **[`data/SOURCES.md`](data/SOURCES.md)** — the rent constant, the housing-index method,
   the research method box, and provenance.

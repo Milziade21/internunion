@@ -1,0 +1,28 @@
+iso2,country,capital,intern_pay_eur,room_rent_eur,ratio,min_wage_eur,unpaid_legal,legal_note
+LV,Latvia,Riga,780,300,2.60,780,no,Open-market traineeships prohibited; any real work triggers the statutory minimum wage.
+GR,Greece,Athens,770.25,400,1.93,1027,partial,Regulated apprenticeship pay pegged to 75% of the unskilled wage; excludes public/Manpower schemes.
+CZ,Czechia,Prague,924,550,1.68,924,no,Any placement doing work of economic value is classed as employment at full minimum wage.
+HU,Hungary,Budapest,544.70,370,1.47,838,partial,Curricular placements over 6 weeks paid at 65% of the minimum wage floor.
+LU,Luxembourg,Luxembourg City,1108.53,950,1.17,2704,no,Open-market placements over 4 weeks must be paid at least 40% of the social minimum wage.
+RO,Romania,Bucharest,397.50,350,1.14,795,no,Dedicated Traineeship Law mandates at least 50% of the national minimum wage.
+PT,Portugal,Lisbon,600,725,0.83,1073,no,Open-market post-education placements must be paid a statutory minimum under IEFP rules.
+IT,Italy,Rome,500,650,0.77,,yes,Unpaid legal for academic/curricular placements only; regional minimum allowance ~500 EUR.
+ES,Spain,Madrid,480,625,0.77,1381,yes,Unpaid legal for academic/curricular placements; non-labour placements require 80% of IPREM.
+FR,France,Paris,600,980,0.61,1823,yes,Educational placements under 2 months can be unpaid; over 2 months require ~4.35 EUR/hour.
+NL,Netherlands,Amsterdam,400,990,0.40,2295,yes,No mandated pay for student internships; corporate stipends are voluntary (~300-500 EUR).
+AT,Austria,Vienna,,500,,,yes,"Volontariat ""educational relationship"" loophole permits unpaid work with no performance obligation."
+BE,Belgium,Brussels,,600,,2112,yes,Curricular internships are unpaid; post-education CIP contracts exist but no central pay floor.
+BG,Bulgaria,Sofia,,250,,620,yes,No dedicated open-market traineeship pay rules.
+HR,Croatia,Zagreb,,400,,1050,yes,Governed by educational or active-labour-market policies; no open-market pay floor.
+CY,Cyprus,Nicosia,,350,,1088,yes,No statutory pay obligation for open-market placements.
+DK,Denmark,Copenhagen,,800,,,yes,Pay set by bilateral corporate/union arrangements; no statutory floor.
+EE,Estonia,Tallinn,,400,,886,yes,Pay set by bilateral corporate/union arrangements; no statutory floor.
+FI,Finland,Helsinki,,550,,,yes,Pay set by bilateral corporate/union arrangements; no statutory floor.
+DE,Germany,Berlin,,633,,2343,yes,Full minimum wage only for voluntary placements over 3 months; curricular and short placements exempt.
+IE,Ireland,Dublin,,850,,2391,yes,Minimum wage law covers work of value but is weakly enforced; unpaid placements common.
+LT,Lithuania,Vilnius,,400,,1153,yes,Voluntary practice up to 240 hours can be unpaid.
+MT,Malta,Valletta,,500,,994,yes,No statutory pay obligation for open-market placements.
+PL,Poland,Warsaw,,500,,1139,yes,Bilateral corporate agreements standard; no open-market pay floor.
+SK,Slovakia,Bratislava,,450,,915,yes,No statutory obligation for open-market placements; worst simulated deficit in the EU.
+SI,Slovenia,Ljubljana,,450,,1278,yes,Bilateral corporate agreements standard; no open-market pay floor.
+SE,Sweden,Stockholm,,700,,,yes,Pay set by bilateral corporate/union arrangements; no statutory floor.
