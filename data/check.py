@@ -8,7 +8,8 @@ LIVABLE_FLOOR_EUR = 770       # rent 509 + utilities 60 + groceries 200 + transp
 rows = list(csv.DictReader(open(pathlib.Path(__file__).parent / "institutions.csv")))
 
 # schema + value integrity
-allowed_status = {"classified", "answered", "not answered"}
+allowed_status = {"classified", "pending", "verified", "disclosed", "refused",
+                  "answered", "not answered"}  # last two: legacy aliases
 allowed_paid = {"yes", "no", "partial", "unknown"}
 for r in rows:
     assert r["name"], "row missing name"

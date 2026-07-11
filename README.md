@@ -19,8 +19,15 @@ collectively-bargained internship conditions.
 
 The homepage is a **Europe choropleth** — each country shaded by intern pay ÷ capital-city room
 rent, grey hatching where there is no legal pay floor — with city pins for coverage (Brussels live,
-other hubs coming soon), then the full Brussels directory, then a submit CTA. The map is projected
-from a GeoJSON at build time; no mapping library, no tiles.
+other hubs coming soon), the full Brussels directory, and the **accountability ledger** (a public
+record of how each employer answers the questionnaire). The map is projected from a GeoJSON at build
+time; no mapping library, no tiles. `build.py` also generates `submit`, `questionnaire` (the
+instrument, published verbatim), `privacy` (GDPR), and `about` pages.
+
+### Before launch, set four things in [`build.py`](build.py)
+`DOMAIN` (done: internunion.com), `FORM_ENDPOINT` (your Formspree/Tally URL for the submit form),
+`CONTACT_EMAIL` (GDPR/data-request address), and `PATREON_URL`. Placeholders build fine but the form
+won't deliver and the contact links won't work until set.
 
 - **[`data/countries.csv`](data/countries.csv)** — EU-27: intern pay, capital room rent, affordability
   ratio, minimum wage, and the **legal status of unpaid internships** per country.
