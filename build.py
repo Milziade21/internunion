@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Gábriel Rossi. Licensed under the MIT License.
 """Generate the internunion static site. Zero dependencies (stdlib only).
 
 Output -> public/. Deploy that folder on any static host (Railway serves it via the

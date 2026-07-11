@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Gábriel Rossi. Licensed under the MIT License.
 """Sanity check for institutions.csv + the housing-index math. Run: python3 check.py"""
 import csv, pathlib
 

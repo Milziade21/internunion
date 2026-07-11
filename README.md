@@ -86,6 +86,9 @@ Support the project: *(Patreon link to be added)*
 
 ## Licence
 
+This project is licensed under the **MIT License** — Copyright (c) 2026 Gábriel Rossi. See the
+[`LICENSE`](LICENSE) file for the full text.
+
 - **Code**: MIT (see [`LICENSE`](LICENSE)).
 - **Data** (`data/*.csv`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — reuse
   freely with attribution to internunion.
