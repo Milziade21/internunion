@@ -35,10 +35,10 @@ cd public && python3 -m http.server 8000   # preview at localhost:8000
 
 ### Railway
 
-The repo is Railway-ready via [`nixpacks.toml`](nixpacks.toml): the build phase runs
-`python3 build.py`, the start phase serves `public/` on `$PORT`. Just create a Railway project
-from this GitHub repo — no extra config. Then add `internunion.com` as a custom domain in
-Railway (Settings → Networking) and point your DNS `CNAME` + `TXT` records at it.
+The repo is Railway-ready via the [`Dockerfile`](Dockerfile): it runs `python3 build.py` at build
+time and serves `public/` on `$PORT`. Just create a Railway project from this GitHub repo — Railway
+detects the Dockerfile and deploys, no extra config. Then add `internunion.com` as a custom domain
+in Railway (Settings → Networking) and point your DNS `CNAME` + `TXT` records at it.
 
 The canonical domain is set via `DOMAIN` at the top of [`build.py`](build.py)
 (`https://internunion.com`); it drives every canonical URL, the sitemap, and the JSON-LD IDs.
