@@ -332,6 +332,12 @@ CSS = """
   .st-verified { background:#dff3e6; color:#0a7a45; }
   .st-disclosed { background:#fde6cf; color:#a5651a; }
   .st-refused { background:#fbdcdc; color:#b11; }
+  .chipbar { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:1.2rem 0 .6rem; }
+  .chiplabel { font-weight:700; margin-right:.4rem; }
+  .chip { border:1px solid var(--line); background:#fff; color:var(--ink); padding:.35rem .85rem;
+          border-radius:20px; cursor:pointer; font:inherit; font-size:.9rem; }
+  .chip:hover { border-color:#0b5; }
+  .chip.active { background:#0b5; color:#fff; border-color:#0b5; }
   .filters { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:1rem 0; }
   .filters select, .filters input { width:auto; max-width:none; margin:0; }
   .citymap .mk { cursor:pointer; }
@@ -487,8 +493,12 @@ city_body = f"""
   median stipend ~&euro;{median:.0f}/month, a single room ~{burden}% of it. Filter the map and list below;
   more cities arrive as the data does.</p>
 
+  <div class="chipbar">
+    <span class="chiplabel">What kind of place?</span>
+    <button class="chip active" data-sector="">All places</button>
+    {"".join(f'<button class="chip" data-sector="{esc(s)}">{esc(s)}</button>' for s in SECTORS)}
+  </div>
   <div class="filters">
-    <select id="f-sector"><option value="">All sectors</option>{"".join(f'<option>{esc(s)}</option>' for s in SECTORS)}</select>
     <select id="f-paid"><option value="">Paid: any</option><option value="yes">paid</option><option value="partial">partial</option><option value="no">unpaid</option><option value="unknown">unknown</option></select>
     <select id="f-status"><option value="">Status: any</option><option value="classified">unverified</option><option value="pending">response pending</option><option value="verified">verified compliant</option><option value="disclosed">disclosed sub-standard</option><option value="refused">refused to disclose</option></select>
     <input id="f-search" placeholder="Search name&hellip;" style="max-width:190px">
@@ -514,18 +524,24 @@ city_body = f"""
 """
 
 FILTER_JS = "const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + """;
+  var sector='';
   function apply(){
-    var sec=document.getElementById('f-sector').value, paid=document.getElementById('f-paid').value,
-        st=document.getElementById('f-status').value,
+    var paid=document.getElementById('f-paid').value, st=document.getElementById('f-status').value,
         q=document.getElementById('f-search').value.toLowerCase(), n=0;
     ORGS.forEach(function(o){
-      var show=(!sec||o.type===sec)&&(!paid||o.paid===paid)&&(!st||o.status===st)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
+      var show=(!sector||o.type===sector)&&(!paid||o.paid===paid)&&(!st||o.status===st)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
       document.querySelectorAll('[data-i="'+o.i+'"]').forEach(function(el){ el.style.display=show?'':'none'; });
       if(show) n++;
     });
     document.getElementById('count').textContent=n+' of '+ORGS.length+' shown';
   }
-  ['f-sector','f-paid','f-status','f-search'].forEach(function(id){
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.addEventListener('click',function(){
+      document.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('active'); });
+      c.classList.add('active'); sector=c.getAttribute('data-sector'); apply();
+    });
+  });
+  ['f-paid','f-status','f-search'].forEach(function(id){
     document.getElementById(id).addEventListener('input',apply); });
   apply();
 """
