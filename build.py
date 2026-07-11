@@ -193,13 +193,13 @@ def inst_rows():
 # markers with a local Mercator window. Filtering is client-side (see CITY_JS) -- no database
 # on the server. ponytail: JSON blob + JS filter is right up to a few thousand points; only then
 # consider a build-time SQLite that exports the elaborated subset (still served static).
-bgeo = json.load(open(ROOT / "assets" / "brussels.geojson"))
-bgeom = bgeo["features"][0]["geometry"]
-bpolys = bgeom["coordinates"] if bgeom["type"] == "MultiPolygon" else [bgeom["coordinates"]]
-_bpts = [p for poly in bpolys for ring in poly for p in ring]
+bgeo = json.load(open(ROOT / "assets" / "brussels-communes.geojson"))
+def _polys(geom):
+    return geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+_bpts = [p for f in bgeo["features"] for poly in _polys(f["geometry"]) for ring in poly for p in ring]
 mLON0, mLON1 = min(p[0] for p in _bpts), max(p[0] for p in _bpts)
 mLAT0, mLAT1 = min(p[1] for p in _bpts), max(p[1] for p in _bpts)
-_px, _py = (mLON1 - mLON0) * 0.04, (mLAT1 - mLAT0) * 0.04
+_px, _py = (mLON1 - mLON0) * 0.03, (mLAT1 - mLAT0) * 0.03
 mLON0 -= _px; mLON1 += _px; mLAT0 -= _py; mLAT1 += _py
 BW = 820.0
 mSX0, mSX1 = math.radians(mLON0), math.radians(mLON1)
@@ -209,8 +209,19 @@ BH = mSCALE * (mSY0 - mSY1)
 def bproject(lon, lat):
     return ((math.radians(lon) - mSX0) * mSCALE, (mSY0 - _my(lat)) * mSCALE)
 
-bpath = ["M" + " ".join(f"{x:.1f},{y:.1f}" for x, y in (bproject(lon, lat) for lon, lat in ring)) + "Z"
-         for poly in bpolys for ring in poly]
+# draw the 19 communes with borders + muted labels -> a recognisable Brussels
+commune_paths, commune_labels = [], []
+for f in bgeo["features"]:
+    xs_all, ys_all, d = [], [], []
+    for poly in _polys(f["geometry"]):
+        for ring in poly:
+            pr = [bproject(lon, lat) for lon, lat in ring]
+            xs_all += [p[0] for p in pr]; ys_all += [p[1] for p in pr]
+            d.append("M" + " ".join(f"{x:.1f},{y:.1f}" for x, y in pr) + "Z")
+    commune_paths.append(f'<path class="commune" d="{"".join(d)}">'
+                         f'<title>{esc(f["properties"]["name"])}</title></path>')
+    cx = (min(xs_all) + max(xs_all)) / 2; cy = (min(ys_all) + max(ys_all)) / 2
+    commune_labels.append(f'<text class="cl" x="{cx:.0f}" y="{cy:.0f}">{esc(f["properties"]["name"])}</text>')
 
 PAID_COLOR = {"yes": "#0b5", "partial": "#f0a33a", "no": "#d1495b", "unknown": "#999"}
 bmap = [r for r in brussels if r["lat"]]        # Brussels orgs with coordinates
@@ -228,8 +239,9 @@ for i, r in enumerate(bmap):
                       "status": r["response_status"]})
 
 svg_city = f'''<svg viewBox="-6 -6 {BW+12:.0f} {BH+12:.0f}" class="map citymap" role="img"
-  aria-label="Map of the Brussels-Capital Region showing internship-hosting organisations.">
-  <path d="{"".join(bpath)}" fill="#eef4ee" stroke="#bcd0bc" stroke-width="1.2"/>
+  aria-label="Map of the Brussels-Capital Region and its 19 communes showing internship-hosting organisations.">
+  <g class="communes">{"".join(commune_paths)}</g>
+  <g class="clabels">{"".join(commune_labels)}</g>
   {"".join(markers)}
 </svg>'''
 
@@ -340,6 +352,9 @@ CSS = """
   .chip.active { background:#0b5; color:#fff; border-color:#0b5; }
   .filters { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:1rem 0; }
   .filters select, .filters input { width:auto; max-width:none; margin:0; }
+  .citymap .commune { fill:#eef4ee; stroke:#c2d4c2; stroke-width:0.8; }
+  .citymap .commune:hover { fill:#e3efe3; }
+  .citymap .cl { font:9px system-ui; fill:#93a393; pointer-events:none; text-anchor:middle; }
   .citymap .mk { cursor:pointer; }
   .citymap .mk:hover, .citymap .mk:focus { stroke:#111; outline:none; }
   .box { background:#fafafa; border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; }
