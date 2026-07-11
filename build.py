@@ -9,7 +9,7 @@ Pages: index (Europe affordability map + Brussels directory + response-status le
 submit, questionnaire (the instrument, published verbatim), privacy (GDPR), about.
 Discoverability baked in: schema.org JSON-LD, robots.txt for AI crawlers, llms.txt, sitemap.xml.
 """
-import csv, shutil, html, json, math, datetime, pathlib
+import csv, shutil, html, json, math, datetime, pathlib, re
 
 # --- one thing to change: your real domain + TLD -----------------------------
 DOMAIN = "https://internunion.com"         # ponytail: single source of truth for all URLs
@@ -32,6 +32,48 @@ def esc(s): return html.escape(s or "")
 def num(s):
     s = (s or "").strip()
     return float(s) if s else None
+
+# ponytail: tiny markdown SUBSET for blog posts (headings, para, bold/italic/code, links, lists,
+# blockquote, hr). Author controls the input, so a subset is safe. Upgrade to python-markdown if
+# posts ever need tables/footnotes/nested lists.
+def md_inline(s):
+    s = esc(s)
+    s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
+    s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+    s = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", s)
+    s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', s)
+    return s
+
+def md_to_html(text):
+    out, lines, i, n = [], text.split("\n"), 0, len(text.split("\n"))
+    while i < n:
+        line = lines[i]
+        if not line.strip():
+            i += 1; continue
+        h = re.match(r"^(#{1,3})\s+(.*)", line)
+        if h:
+            lvl = len(h.group(1)) + 1
+            out.append(f"<h{lvl}>{md_inline(h.group(2))}</h{lvl}>"); i += 1; continue
+        if re.match(r"^---+\s*$", line):
+            out.append("<hr>"); i += 1; continue
+        if re.match(r"^>\s", line):
+            buf = []
+            while i < n and re.match(r"^>\s?", lines[i]):
+                buf.append(re.sub(r"^>\s?", "", lines[i])); i += 1
+            out.append("<blockquote>" + " ".join(md_inline(b) for b in buf) + "</blockquote>"); continue
+        for pat, tag in ((r"^[-*]\s+", "ul"), (r"^\d+\.\s+", "ol")):
+            if re.match(pat, line):
+                items = []
+                while i < n and re.match(pat, lines[i]):
+                    items.append(re.sub(pat, "", lines[i])); i += 1
+                out.append(f"<{tag}>" + "".join(f"<li>{md_inline(x)}</li>" for x in items) + f"</{tag}>")
+                break
+        else:
+            buf = []
+            while i < n and lines[i].strip() and not re.match(r"^(#{1,3}\s|>\s|[-*]\s|\d+\.\s|---+\s*$)", lines[i]):
+                buf.append(lines[i]); i += 1
+            out.append("<p>" + md_inline(" ".join(buf)) + "</p>")
+    return "\n".join(out)
 
 # ============================================================ data
 inst = list(csv.DictReader(open(ROOT / "data" / "institutions.csv")))
@@ -373,6 +415,10 @@ CSS = """
   .foot { max-width:1000px; margin:3rem auto 0; padding:1rem 1.1rem 3rem; border-top:1px solid var(--line); color:var(--mut); font-size:.85rem; }
   .foot a { color:#06c; }
   details { margin:.5rem 0; } summary { cursor:pointer; font-weight:600; }
+  article h2, article h3 { margin-top:1.6rem; }
+  article ul, article ol { padding-left:1.3rem; }
+  article blockquote, blockquote { border-left:3px solid #cfe8d8; margin:1rem 0; padding:.2rem 0 .2rem 1rem; color:#444; }
+  code { background:#f2f2f2; padding:.05rem .3rem; border-radius:4px; font-size:.92em; }
 """
 
 TIP_JS = """
@@ -388,11 +434,12 @@ TIP_JS = """
 """
 
 NAV = ('<header class="nav"><a href="/" class="brand">internunion</a><nav>'
-       '<a href="/">Map</a> <a href="/city.html">Cities</a> <a href="/submit.html">Submit</a> '
-       '<a href="/questionnaire.html">Questionnaire</a> <a href="/about.html">About</a> '
+       '<a href="/">Map</a> <a href="/city.html">Cities</a> <a href="/rights.html">Rights</a> '
+       '<a href="/blog.html">Blog</a> <a href="/submit.html">Submit</a> <a href="/about.html">About</a> '
        f'<a href="{GH}">GitHub</a></nav></header>')
 
 FOOTER = (f'<footer class="foot"><div><a href="/">Map</a> &middot; <a href="/city.html">Cities</a> '
+          f'&middot; <a href="/rights.html">Rights</a> &middot; <a href="/blog.html">Blog</a> '
           f'&middot; <a href="/submit.html">Submit</a> '
           f'&middot; <a href="/questionnaire.html">Questionnaire</a> &middot; <a href="/about.html">About</a> '
           f'&middot; <a href="/privacy.html">Privacy</a> &middot; <a href="{PATREON_URL}">Support on Patreon</a> '
@@ -721,6 +768,105 @@ about_body = f"""
   has always worked at the level of the group, never the single person.</p>
 """
 
+rights_body = f"""
+  <h1>Know your rights as an intern in Brussels</h1>
+  <p class="tldr">Belgium has no single "intern" status &mdash; your rights depend on which contract you are
+  on. This is plain-language information, not legal advice. When in doubt, talk to a trade union or Bruxelles
+  Formation.</p>
+
+  <h2>The two contracts that matter</h2>
+  <div class="box">
+    <h3>Academic internship (convention de stage / stageovereenkomst)</h3>
+    <p>A three-way agreement between you, your university and the employer, tied to your studies. It is
+    generally <strong>unpaid</strong> &mdash; legally only the reimbursement of real, documented expenses is
+    required &mdash; and is meant as a learning experience, not a job. This is legal when it is genuinely part
+    of your curriculum.</p>
+    <h3>Professional Immersion Agreement (CIP / BIO)</h3>
+    <p>The <em>Convention d'Immersion Professionnelle</em> (FR) / <em>Beroepsinlevingsovereenkomst</em> (NL) is
+    for graduates and jobseekers no longer enrolled in a programme. It requires a written training plan and a
+    <strong>legally indexed minimum stipend &mdash; about &euro;{CIP_MIN_EUR} gross/month for a full-time
+    placement (2026)</strong>. It is overseen by Bruxelles Formation (FR) or VDAB (NL).</p>
+  </div>
+
+  <h2>The "bogus internship" trap</h2>
+  <p>Some employers hire recent graduates under a <em>student</em>-style agreement to avoid paying the CIP
+  minimum. If you have finished your studies and are doing real, productive work, you should normally be on a
+  CIP (or an employment contract) &mdash; not an unpaid academic convention. The European Committee of Social
+  Rights has found that Belgium's gaps here fail to protect interns from being used as cheap or free labour.
+  If your "internship" looks like a job, it probably should be paid like one.</p>
+
+  <h2>What you are entitled to</h2>
+  <ul>
+    <li><strong>A written agreement</strong> and a real training plan &mdash; not just tasks.</li>
+    <li><strong>Insurance</strong> against workplace accidents.</li>
+    <li><strong>Reasonable working time</strong> and rest, like any worker.</li>
+    <li><strong>The CIP stipend</strong> if you are a graduate/jobseeker on a professional-immersion placement.</li>
+    <li><strong>To be treated as staff, not free labour</strong> &mdash; the placement must teach you something.</li>
+  </ul>
+
+  <h2>Living here: the practical rights</h2>
+  <ul>
+    <li><strong>Register with your commune</strong> when you settle; you usually need a lease and proof of means.</li>
+    <li><strong>Rental deposit</strong> is capped (max two months' rent) and must sit in a blocked account.</li>
+    <li><strong>Public transport</strong>: under 25 and registered in Brussels, the STIB annual pass is about
+    &euro;12/year (&euro;1/month).</li>
+    <li><strong>Abusive rent</strong>: since 2025 a rent more than 20% above the regional reference can be
+    challenged (loyers.brussels).</li>
+  </ul>
+
+  <h2>Where to get help</h2>
+  <ul>
+    <li><strong>Bruxelles Formation</strong> (FR) / <strong>VDAB</strong> (NL) &mdash; the CIP framework.</li>
+    <li><strong>Trade unions</strong> (CSC/ACV, FGTB/ABVV, CGSLB/ACLVB) &mdash; free advice for members.</li>
+    <li><strong>The regional labour inspectorate</strong> &mdash; for suspected abuse.</li>
+    <li><strong>European Youth Forum</strong> and the <strong>Fair Internship Initiative</strong> &mdash; advocacy and community.</li>
+  </ul>
+
+  <div class="cta">
+    <p>Interned somewhere in Brussels? Your experience helps everyone. <a href="/submit.html">Add your
+    conditions</a>, or read what others are asking on the <a href="/blog.html">blog</a>.</p>
+  </div>
+
+  <p style="color:var(--mut);font-size:.85rem">General information compiled from public sources (Belgian labour
+  rules, Bruxelles Formation, the European Committee of Social Rights, and the affordability research behind
+  this site). Not legal advice. Rules change &mdash; verify with an official source or a union before acting.</p>
+"""
+
+# ---- blog: posts are markdown files in content/blog/, rendered at build time ----
+POSTDIR = ROOT / "content" / "blog"
+def parse_post(p):
+    raw = p.read_text(encoding="utf-8"); meta = {}; body = raw
+    if raw.startswith("---"):
+        _, fm, body = raw.split("---", 2)
+        for ln in fm.strip().splitlines():
+            if ":" in ln:
+                k, v = ln.split(":", 1); meta[k.strip()] = v.strip()
+    return {"slug": p.stem, "meta": meta, "body": body.strip()}
+posts = sorted([parse_post(p) for p in POSTDIR.glob("*.md")],
+               key=lambda x: x["meta"].get("date", ""), reverse=True)
+
+def post_page(post):
+    m = post["meta"]
+    body = (f'<article><h1>{esc(m.get("title", "Untitled"))}</h1>'
+            f'<p style="color:var(--mut);font-size:.9rem">{esc(m.get("date", ""))}</p>'
+            f'{md_to_html(post["body"])}'
+            f'<p style="margin-top:2.5rem"><a href="/blog.html">&larr; All articles</a> &middot; '
+            f'<a href="/rights.html">Know your rights</a></p></article>')
+    ld = {"@context": "https://schema.org", "@type": "BlogPosting", "headline": m.get("title", ""),
+          "datePublished": m.get("date", ""), "author": {"@type": "Organization", "name": "internunion"},
+          "publisher": {"@id": f"{DOMAIN}/#org"}, "mainEntityOfPage": f"{DOMAIN}/blog/{post['slug']}.html"}
+    head = f'<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>\n'
+    return shell(f'{m.get("title", "Article")} | internunion', m.get("summary", ""), body,
+                 f"/blog/{post['slug']}.html", head_extra=head)
+
+blog_index_body = ('<h1>Blog &mdash; intern questions &amp; doubts</h1>'
+    '<p class="tldr">Short articles on the real questions of interning in Brussels: contracts, pay, housing, '
+    'rights. Have a question you want answered? <a href="/submit.html">Tell us</a>.</p>'
+    + ("<p>No articles yet &mdash; check back soon.</p>" if not posts else "".join(
+        f'<h2 style="margin-bottom:.1rem"><a href="/blog/{p["slug"]}.html">{esc(p["meta"].get("title", "Untitled"))}</a></h2>'
+        f'<p style="color:var(--mut);font-size:.85rem;margin:.1rem 0">{esc(p["meta"].get("date", ""))}</p>'
+        f'<p>{esc(p["meta"].get("summary", ""))}</p>' for p in posts)))
+
 # ============================================================ non-HTML files
 robots_txt = "".join(f"User-agent: {b}\nAllow: /\n" for b in
     ["OAI-SearchBot","ChatGPT-User","GPTBot","PerplexityBot","Perplexity-User","ClaudeBot",
@@ -771,7 +917,15 @@ PAGES = {
     "about.html": shell("About | internunion",
         "internunion is a self-funded project by an intern in Brussels, mapping internship pay against the "
         "cost of living to build the case for fair, transparent internships.", about_body, "/about.html"),
+    "rights.html": shell("Know your rights as an intern in Brussels | internunion",
+        "A plain-language guide to intern rights in Brussels: academic vs CIP contracts, the legally indexed "
+        "minimum stipend, bogus internships, housing, and where to get help.", rights_body, "/rights.html"),
+    "blog.html": shell("Blog: intern questions & doubts in Brussels | internunion",
+        "Articles on the real questions of interning in Brussels: contracts, pay, housing, and rights.",
+        blog_index_body, "/blog.html"),
 }
+for _p in posts:                           # one page per markdown article
+    PAGES[f"blog/{_p['slug']}.html"] = post_page(_p)
 
 sitemap_xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -781,6 +935,7 @@ sitemap_xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
 # ============================================================ write + check
 OUT.mkdir(exist_ok=True)
 for name, content in PAGES.items():
+    (OUT / name).parent.mkdir(parents=True, exist_ok=True)   # blog/ subdir
     (OUT / name).write_text(content, encoding="utf-8")
 (OUT / "robots.txt").write_text(robots_txt, encoding="utf-8")
 (OUT / "llms.txt").write_text(llms_txt, encoding="utf-8")
@@ -801,5 +956,7 @@ for p in PAGES:                            # every page has nav, main and footer
     h = (OUT / p).read_text(encoding="utf-8")
     assert 'class="nav"' in h and "<main>" in h and 'class="foot"' in h, f"{p} missing shell"
 assert FORM_ENDPOINT in (OUT / "submit.html").read_text(encoding="utf-8"), "form endpoint missing"
+assert "Professional Immersion" in (OUT / "rights.html").read_text(encoding="utf-8"), "rights page missing"
+assert all((OUT / f"blog/{p['slug']}.html").exists() for p in posts), "a blog post failed to render"
 print(f"built public/  ({len(PAGES)} pages, {len(countries)} countries, {len(no_floor)} no-floor, "
       f"{len(blist)} Brussels orgs ({n_mapped} mapped), median EUR {median:.0f})")

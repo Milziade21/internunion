@@ -39,6 +39,9 @@ won't deliver and the contact links won't work until set.
 - **[`build.py`](build.py)** — zero-dependency generator: turns the CSV into a static,
   search- and AI-discoverable site (`public/`) with schema.org `Dataset` JSON-LD, `robots.txt`,
   `llms.txt`, `sitemap.xml`, and an answer-first page.
+- **`content/blog/*.md`** — blog articles. Add a markdown file with `title`, `date`, `summary`
+  frontmatter and it builds into `/blog/<slug>.html` (newest first on `/blog.html`). Supported
+  markdown: headings, bold/italic/code, links, lists, blockquotes, `---` rules.
 
 ## Run & deploy
 
