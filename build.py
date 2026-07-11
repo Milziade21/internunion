@@ -188,6 +188,65 @@ def inst_rows():
             f'<td><a href="{esc(r["source_url"])}" rel="nofollow">source</a></td></tr>')
     return "\n".join(out)
 
+# ============================================================ Brussels city map
+# Same no-library approach as the Europe map: project the region boundary + geocoded org
+# markers with a local Mercator window. Filtering is client-side (see CITY_JS) -- no database
+# on the server. ponytail: JSON blob + JS filter is right up to a few thousand points; only then
+# consider a build-time SQLite that exports the elaborated subset (still served static).
+bgeo = json.load(open(ROOT / "assets" / "brussels.geojson"))
+bgeom = bgeo["features"][0]["geometry"]
+bpolys = bgeom["coordinates"] if bgeom["type"] == "MultiPolygon" else [bgeom["coordinates"]]
+_bpts = [p for poly in bpolys for ring in poly for p in ring]
+mLON0, mLON1 = min(p[0] for p in _bpts), max(p[0] for p in _bpts)
+mLAT0, mLAT1 = min(p[1] for p in _bpts), max(p[1] for p in _bpts)
+_px, _py = (mLON1 - mLON0) * 0.04, (mLAT1 - mLAT0) * 0.04
+mLON0 -= _px; mLON1 += _px; mLAT0 -= _py; mLAT1 += _py
+BW = 820.0
+mSX0, mSX1 = math.radians(mLON0), math.radians(mLON1)
+mSY0, mSY1 = _my(mLAT1), _my(mLAT0)
+mSCALE = BW / (mSX1 - mSX0)
+BH = mSCALE * (mSY0 - mSY1)
+def bproject(lon, lat):
+    return ((math.radians(lon) - mSX0) * mSCALE, (mSY0 - _my(lat)) * mSCALE)
+
+bpath = ["M" + " ".join(f"{x:.1f},{y:.1f}" for x, y in (bproject(lon, lat) for lon, lat in ring)) + "Z"
+         for poly in bpolys for ring in poly]
+
+PAID_COLOR = {"yes": "#0b5", "partial": "#f0a33a", "no": "#d1495b", "unknown": "#999"}
+bmap = [r for r in brussels if r["lat"]]        # Brussels orgs with coordinates
+markers, orgs_json = [], []
+for i, r in enumerate(bmap):
+    x, y = bproject(float(r["lon"]), float(r["lat"]))
+    s = r["monthly_stipend_eur"].strip()
+    tip = (f'{r["name"]} - {r["type"]}. '
+           + (f'Paid EUR {float(s):.0f}/mo.' if s else
+              ('Unpaid.' if r["paid"] == "no" else 'Paid (amount unknown).' if r["paid"] == "yes" else 'Pay unknown.')))
+    markers.append(f'<circle class="mk" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="6" '
+                   f'fill="{PAID_COLOR.get(r["paid"], "#999")}" stroke="#fff" stroke-width="1.5" '
+                   f'data-tip="{esc(tip)}" tabindex="0"><title>{esc(tip)}</title></circle>')
+    orgs_json.append({"i": i, "name": r["name"], "type": r["type"], "paid": r["paid"],
+                      "status": r["response_status"]})
+
+svg_city = f'''<svg viewBox="-6 -6 {BW+12:.0f} {BH+12:.0f}" class="map citymap" role="img"
+  aria-label="Map of the Brussels-Capital Region showing internship-hosting organisations.">
+  <path d="{"".join(bpath)}" fill="#eef4ee" stroke="#bcd0bc" stroke-width="1.2"/>
+  {"".join(markers)}
+</svg>'''
+
+def city_list_rows():
+    out = []
+    for i, r in enumerate(bmap):
+        label, cls = STATUS[r["response_status"]]
+        s = r["monthly_stipend_eur"].strip()
+        pay = f'&euro;{float(s):.0f}' if s else '&mdash;'
+        out.append(f'<tr data-i="{i}"><td>{esc(r["name"])}</td><td>{esc(r["type"])}</td>'
+                   f'<td>{esc(r["paid"])}</td><td class="num">{pay}</td>'
+                   f'<td><span class="st {cls}">{label}</span></td>'
+                   f'<td><a href="{esc(r["source_url"])}" rel="nofollow">source</a></td></tr>')
+    return "\n".join(out)
+
+SECTORS = sorted(set(r["type"] for r in bmap))
+
 # ============================================================ structured data (index only)
 graph = {"@context": "https://schema.org", "@graph": [
     {"@type": "Dataset", "@id": f"{DOMAIN}/#countries",
@@ -203,7 +262,7 @@ graph = {"@context": "https://schema.org", "@graph": [
      "name": "Brussels internship providers",
      "description": ("Organisations in Brussels that host interns, with type, whether the internship "
                      "is paid, monthly stipend, a response-status field, address and source."),
-     "url": DOMAIN + "/#brussels", "license": "https://creativecommons.org/licenses/by/4.0/",
+     "url": DOMAIN + "/city.html", "license": "https://creativecommons.org/licenses/by/4.0/",
      "isAccessibleForFree": True, "creator": {"@id": f"{DOMAIN}/#org"}, "dateModified": TODAY,
      "spatialCoverage": {"@type": "Place", "name": "Brussels-Capital Region, Belgium"},
      "distribution": [{"@type": "DataDownload", "name": "institutions.csv",
@@ -273,6 +332,10 @@ CSS = """
   .st-verified { background:#dff3e6; color:#0a7a45; }
   .st-disclosed { background:#fde6cf; color:#a5651a; }
   .st-refused { background:#fbdcdc; color:#b11; }
+  .filters { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:1rem 0; }
+  .filters select, .filters input { width:auto; max-width:none; margin:0; }
+  .citymap .mk { cursor:pointer; }
+  .citymap .mk:hover, .citymap .mk:focus { stroke:#111; outline:none; }
   .box { background:#fafafa; border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; }
   .cta { background:#f2f8f4; border:1px solid #cfe8d8; border-radius:12px; padding:1.4rem; margin:1rem 0; }
   .btn { display:inline-block; background:#0b5; color:#fff; text-decoration:none; padding:.6rem 1.1rem; border-radius:8px; font-weight:600; margin-top:.6rem; border:0; cursor:pointer; font-size:1rem; }
@@ -290,7 +353,7 @@ CSS = """
 
 TIP_JS = """
   var tip = document.getElementById('tip');
-  document.querySelectorAll('.map path[data-tip]').forEach(function(p){
+  document.querySelectorAll('[data-tip]').forEach(function(p){
     p.addEventListener('mousemove', function(e){
       tip.textContent = p.getAttribute('data-tip');
       tip.style.left = Math.min(e.clientX+14, innerWidth-290)+'px';
@@ -301,11 +364,12 @@ TIP_JS = """
 """
 
 NAV = ('<header class="nav"><a href="/" class="brand">internunion</a><nav>'
-       '<a href="/">Map</a> <a href="/#brussels">Brussels</a> <a href="/submit.html">Submit</a> '
+       '<a href="/">Map</a> <a href="/city.html">Cities</a> <a href="/submit.html">Submit</a> '
        '<a href="/questionnaire.html">Questionnaire</a> <a href="/about.html">About</a> '
        f'<a href="{GH}">GitHub</a></nav></header>')
 
-FOOTER = (f'<footer class="foot"><div><a href="/">Map</a> &middot; <a href="/submit.html">Submit</a> '
+FOOTER = (f'<footer class="foot"><div><a href="/">Map</a> &middot; <a href="/city.html">Cities</a> '
+          f'&middot; <a href="/submit.html">Submit</a> '
           f'&middot; <a href="/questionnaire.html">Questionnaire</a> &middot; <a href="/about.html">About</a> '
           f'&middot; <a href="/privacy.html">Privacy</a> &middot; <a href="{PATREON_URL}">Support on Patreon</a> '
           f'&middot; <a href="{GH}">GitHub</a></div>'
@@ -366,20 +430,15 @@ index_body = f"""
   fragmented: the median stipend here is ~<strong>&euro;{median:.0f}/month</strong> and a single room is
   ~<strong>{burden}% of it</strong>. At the low end (&euro;{lo:.0f}&ndash;1100 &mdash;
   {", ".join(esc(r["name"]) for r in low_end[:3])} and others) little is left after the ~&euro;{LIVABLE_FLOOR_EUR}
-  minimum cost of living.</p>
-  <div class="scroll"><table>
-    <thead><tr><th>Organisation</th><th>Type</th><th>City</th><th>Paid</th>
-    <th class="num">Stipend/mo</th><th>Status</th><th>Source</th></tr></thead>
-    <tbody>{inst_rows()}</tbody>
-  </table></div>
-  <p><a href="/institutions.csv">Download the Brussels dataset (CSV)</a> &middot;
-  <a href="{GH}">Source &amp; contributions on GitHub</a></p>
+  minimum cost of living. Explore all {len(brussels)} organisations on a filterable city map.</p>
+  <p><a class="btn" href="/city.html">Open the Brussels dashboard</a></p>
 
   <h2>The accountability ledger</h2>
   <div class="box">
     <p>Job boards are paid by employers, so they never say whether a role is <em>livable</em> or
-    <em>legal</em>. We do. The <strong>Status</strong> column above is a public record of how each
-    organisation answers our <a href="/questionnaire.html">standardised questionnaire</a>:</p>
+    <em>legal</em>. We do. The <strong>Status</strong> column on the <a href="/city.html">Brussels
+    dashboard</a> is a public record of how each organisation answers our
+    <a href="/questionnaire.html">standardised questionnaire</a>:</p>
     <p><span class="st st-classified">unverified</span> compiled from public research, not yet contacted &middot;
     <span class="st st-pending">response pending</span> questionnaire sent, within the 14-day window &middot;
     <span class="st st-verified">verified compliant</span> replied with proof of paid, compliant terms &middot;
@@ -410,6 +469,66 @@ index_body = f"""
 index_head = (f'<meta property="og:description" content="Open map: internship pay vs cost of living across '
               f'the EU, plus the full Brussels directory.">\n'
               f'<script type="application/ld+json">\n{json.dumps(graph, ensure_ascii=False, indent=1)}\n</script>\n')
+
+city_body = f"""
+  <h1>City dashboard</h1>
+  <div class="filters" style="margin-top:.2rem">
+    <label style="margin:0;font-weight:600">City&nbsp;
+      <select id="citysel">
+        <option value="brussels" selected>Brussels &mdash; live</option>
+        <option disabled>Luxembourg &mdash; coming soon</option>
+        <option disabled>Paris &mdash; coming soon</option>
+        <option disabled>Amsterdam &mdash; coming soon</option>
+        <option disabled>Frankfurt &mdash; coming soon</option>
+        <option disabled>Vienna &mdash; coming soon</option>
+      </select></label>
+  </div>
+  <p class="tldr">Brussels is our first city. Belgium sets no central pay floor, so the market is fragmented:
+  median stipend ~&euro;{median:.0f}/month, a single room ~{burden}% of it. Filter the map and list below;
+  more cities arrive as the data does.</p>
+
+  <div class="filters">
+    <select id="f-sector"><option value="">All sectors</option>{"".join(f'<option>{esc(s)}</option>' for s in SECTORS)}</select>
+    <select id="f-paid"><option value="">Paid: any</option><option value="yes">paid</option><option value="partial">partial</option><option value="no">unpaid</option><option value="unknown">unknown</option></select>
+    <select id="f-status"><option value="">Status: any</option><option value="classified">unverified</option><option value="pending">response pending</option><option value="verified">verified compliant</option><option value="disclosed">disclosed sub-standard</option><option value="refused">refused to disclose</option></select>
+    <input id="f-search" placeholder="Search name&hellip;" style="max-width:190px">
+    <span id="count" style="color:var(--mut);font-size:.9rem"></span>
+  </div>
+  <div class="legend" style="margin:0 0 .6rem">
+    <span><i class="sw" style="background:#0b5"></i> paid</span>
+    <span><i class="sw" style="background:#f0a33a"></i> partial</span>
+    <span><i class="sw" style="background:#d1495b"></i> unpaid</span>
+    <span><i class="sw" style="background:#999"></i> unknown</span>
+    <span style="color:var(--mut)">&mdash; markers geocoded from public addresses (OpenStreetMap)</span>
+  </div>
+  <div class="mapwrap">{svg_city}</div>
+
+  <div class="scroll"><table>
+    <thead><tr><th>Organisation</th><th>Type</th><th>Paid</th><th class="num">Stipend/mo</th>
+    <th>Status</th><th>Source</th></tr></thead>
+    <tbody>{city_list_rows()}</tbody>
+  </table></div>
+  <p><a href="/institutions.csv">Download the Brussels dataset (CSV)</a> &middot;
+  <a href="/submit.html">Add a place</a> &middot;
+  <a href="/questionnaire.html">How the status ledger works</a></p>
+"""
+
+FILTER_JS = "const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + """;
+  function apply(){
+    var sec=document.getElementById('f-sector').value, paid=document.getElementById('f-paid').value,
+        st=document.getElementById('f-status').value,
+        q=document.getElementById('f-search').value.toLowerCase(), n=0;
+    ORGS.forEach(function(o){
+      var show=(!sec||o.type===sec)&&(!paid||o.paid===paid)&&(!st||o.status===st)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
+      document.querySelectorAll('[data-i="'+o.i+'"]').forEach(function(el){ el.style.display=show?'':'none'; });
+      if(show) n++;
+    });
+    document.getElementById('count').textContent=n+' of '+ORGS.length+' shown';
+  }
+  ['f-sector','f-paid','f-status','f-search'].forEach(function(id){
+    document.getElementById(id).addEventListener('input',apply); });
+  apply();
+"""
 
 submit_body = f"""
   <h1>Add a place, or tell us your conditions</h1>
@@ -599,6 +718,10 @@ PAGES = {
         f"directory and an employer accountability ledger. {len(no_floor)} of 27 EU countries have no legal "
         f"pay floor for interns.", index_body, "/", head_extra=index_head,
         tail='<div id="tip"></div>\n<script>' + TIP_JS + '</script>'),
+    "city.html": shell("Brussels internship dashboard &mdash; filterable map | internunion",
+        f"A filterable map of {len(bmap)} organisations in Brussels that host interns: sector, whether "
+        "paid, stipend and the response-status ledger. More EU cities coming soon.", city_body, "/city.html",
+        tail='<div id="tip"></div>\n<script>' + TIP_JS + FILTER_JS + '</script>'),
     "submit.html": shell("Submit a place or your internship conditions | internunion",
         "Add a Brussels/EU workplace that hosts interns and tell us the real pay and conditions. No login, "
         "anonymous by default, GDPR-compliant.", submit_body, "/submit.html"),
@@ -629,14 +752,18 @@ shutil.copyfile(ROOT / "data" / "institutions.csv", OUT / "institutions.csv")
 shutil.copyfile(ROOT / "data" / "countries.csv", OUT / "countries.csv")
 
 idx = (OUT / "index.html").read_text(encoding="utf-8")
+city = (OUT / "city.html").read_text(encoding="utf-8")
 assert len(countries) == 27, f"expected 27 EU countries, got {len(countries)}"
-assert '<svg' in idx and idx.count("<path") >= 27, "map paths missing"
+assert '<svg' in idx and idx.count("<path") >= 27, "Europe map paths missing"
 assert '"@type": "Dataset"' in idx, "Dataset JSON-LD missing"
-assert idx.count("<tr>") == len(inst) + len(countries) + 2, "table row count mismatch"
+assert idx.count("<tr>") == len(countries) + 1, "index should hold only the country table"
+assert city.count('class="mk"') == len(bmap), "city markers != geocoded Brussels orgs"
+assert city.count("<tr") == len(bmap) + 1, "city list rows != geocoded Brussels orgs"
+assert len(bmap) == len(brussels), f"{len(brussels)-len(bmap)} Brussels orgs missing coordinates"
 json.loads(idx.split('application/ld+json">', 1)[1].split("</script>", 1)[0])  # JSON-LD parses
 for p in PAGES:                            # every page has nav, main and footer
     h = (OUT / p).read_text(encoding="utf-8")
     assert 'class="nav"' in h and "<main>" in h and 'class="foot"' in h, f"{p} missing shell"
 assert FORM_ENDPOINT in (OUT / "submit.html").read_text(encoding="utf-8"), "form endpoint missing"
 print(f"built public/  ({len(PAGES)} pages, {len(countries)} countries, {len(no_floor)} no-floor, "
-      f"{len(inst)} Brussels rows, median EUR {median:.0f})")
+      f"{len(bmap)} Brussels orgs mapped, median EUR {median:.0f})")
