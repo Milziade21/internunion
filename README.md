@@ -19,9 +19,11 @@ collectively-bargained internship conditions.
 
 The homepage is a **Europe choropleth** — each country shaded by intern pay ÷ capital-city room
 rent, grey hatching where there is no legal pay floor — with city pins for coverage (Brussels live,
-other hubs coming soon), the full Brussels directory, and the **accountability ledger** (a public
-record of how each employer answers the questionnaire). The map is projected from a GeoJSON at build
-time; no mapping library, no tiles. `build.py` also generates `submit`, `questionnaire` (the
+other hubs coming soon), and the **accountability ledger**. Projected from a GeoJSON at build time;
+no library. The **Brussels city dashboard** (`/city.html`) is a **Leaflet + OpenStreetMap road map**
+(vendored in `assets/vendor/`): curated orgs as category-coloured pins (EU institutions in blue),
+with the ~3,300 EU Transparency Register orgs behind a toggle (postcode-level, approximate). Category
+chips + pay/status/search filters drive the map and the directory list together. `build.py` also generates `submit`, `questionnaire` (the
 instrument, published verbatim), `privacy` (GDPR), and `about` pages.
 
 ### Before launch, set four things in [`build.py`](build.py)

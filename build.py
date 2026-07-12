@@ -230,69 +230,27 @@ def inst_rows():
             f'<td><a href="{esc(r["source_url"])}" rel="nofollow">source</a></td></tr>')
     return "\n".join(out)
 
-# ============================================================ Brussels city map
-# Same no-library approach as the Europe map: project the region boundary + geocoded org
-# markers with a local Mercator window. Filtering is client-side (see CITY_JS) -- no database
-# on the server. ponytail: JSON blob + JS filter is right up to a few thousand points; only then
-# consider a build-time SQLite that exports the elaborated subset (still served static).
-bgeo = json.load(open(ROOT / "assets" / "brussels-communes.geojson"))
-def _polys(geom):
-    return geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
-_bpts = [p for f in bgeo["features"] for poly in _polys(f["geometry"]) for ring in poly for p in ring]
-mLON0, mLON1 = min(p[0] for p in _bpts), max(p[0] for p in _bpts)
-mLAT0, mLAT1 = min(p[1] for p in _bpts), max(p[1] for p in _bpts)
-_px, _py = (mLON1 - mLON0) * 0.03, (mLAT1 - mLAT0) * 0.03
-mLON0 -= _px; mLON1 += _px; mLAT0 -= _py; mLAT1 += _py
-BW = 820.0
-mSX0, mSX1 = math.radians(mLON0), math.radians(mLON1)
-mSY0, mSY1 = _my(mLAT1), _my(mLAT0)
-mSCALE = BW / (mSX1 - mSX0)
-BH = mSCALE * (mSY0 - mSY1)
-def bproject(lon, lat):
-    return ((math.radians(lon) - mSX0) * mSCALE, (mSY0 - _my(lat)) * mSCALE)
-
-# draw the 19 communes with borders + muted labels -> a recognisable Brussels
-commune_paths, commune_labels = [], []
-for f in bgeo["features"]:
-    xs_all, ys_all, d = [], [], []
-    for poly in _polys(f["geometry"]):
-        for ring in poly:
-            pr = [bproject(lon, lat) for lon, lat in ring]
-            xs_all += [p[0] for p in pr]; ys_all += [p[1] for p in pr]
-            d.append("M" + " ".join(f"{x:.1f},{y:.1f}" for x, y in pr) + "Z")
-    commune_paths.append(f'<path class="commune" d="{"".join(d)}">'
-                         f'<title>{esc(f["properties"]["name"])}</title></path>')
-    cx = (min(xs_all) + max(xs_all)) / 2; cy = (min(ys_all) + max(ys_all)) / 2
-    commune_labels.append(f'<text class="cl" x="{cx:.0f}" y="{cy:.0f}">{esc(f["properties"]["name"])}</text>')
-
-PAID_COLOR = {"yes": "#0b5", "partial": "#f0a33a", "no": "#d1495b", "unknown": "#999"}
-blist = sorted(brussels, key=lambda r: r["name"])   # all Brussels orgs; map dot only if geocoded
-markers, orgs_json = [], []
+# ============================================================ Brussels city data (Leaflet)
+# The city map is Leaflet + OpenStreetMap tiles (real roads). Markers and filtering are client-side
+# (see CITY_JS) -- no database on the server. Curated orgs are precisely geocoded pins; register
+# orgs are postcode-level (loc=approx), shown behind a toggle and never as false street pins.
+# category -> colour (EU institutions blue), shared by the map and the legend
+CATCOLOR = {"EU institution": "#1d6fb8", "EU agency": "#1d6fb8", "NGO": "#2e9e5b",
+    "think tank": "#7e57c2", "consultancy": "#ef8a34", "trade association": "#159a9a",
+    "trade union": "#159a9a", "law firm": "#8d6e63", "company": "#64748b", "academic": "#d6559b",
+    "public/mixed": "#546e7a", "public authority": "#546e7a", "foundation": "#5c6bc0",
+    "media": "#e05252", "religious": "#9e9e9e", "other": "#9e9e9e"}
+blist = sorted(brussels, key=lambda r: r["name"])
+orgs_json = []
 for i, r in enumerate(blist):
+    s = r["monthly_stipend_eur"].strip()
     orgs_json.append({"i": i, "name": r["name"], "type": r["type"], "paid": r["paid"],
-                      "status": r["response_status"]})
-    if not r["lat"]:
-        continue
-    x, y = bproject(float(r["lon"]), float(r["lat"]))
-    if r.get("loc") == "approx":          # bulk register org: small, light, postcode-level
-        markers.append(f'<circle class="mk ap" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="3.2" '
-                       f'fill="#b3b3b3" data-tip="{esc(r["name"] + " - " + r["type"])}"/>')
-    else:                                 # curated org: solid, precisely geocoded
-        s = r["monthly_stipend_eur"].strip()
-        tip = (f'{r["name"]} - {r["type"]}. '
-               + (f'Paid EUR {float(s):.0f}/mo.' if s else
-                  ('Unpaid.' if r["paid"] == "no" else 'Paid (amount unknown).' if r["paid"] == "yes" else 'Pay unknown.')))
-        markers.append(f'<circle class="mk" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="6" '
-                       f'fill="{PAID_COLOR.get(r["paid"], "#999")}" stroke="#fff" stroke-width="1.5" '
-                       f'data-tip="{esc(tip)}" tabindex="0"><title>{esc(tip)}</title></circle>')
-n_mapped = len(markers)
-
-svg_city = f'''<svg viewBox="-6 -6 {BW+12:.0f} {BH+12:.0f}" class="map citymap" role="img"
-  aria-label="Map of the Brussels-Capital Region and its 19 communes showing internship-hosting organisations.">
-  <g class="communes">{"".join(commune_paths)}</g>
-  <g class="clabels">{"".join(commune_labels)}</g>
-  {"".join(markers)}
-</svg>'''
+                      "status": r["response_status"], "loc": r.get("loc", "exact"),
+                      "url": r["source_url"], "pay": (f"{float(s):.0f}" if s else ""),
+                      "lat": (float(r["lat"]) if r["lat"] else None),
+                      "lon": (float(r["lon"]) if r["lon"] else None)})
+n_mapped = sum(1 for o in orgs_json if o["lat"] is not None)
+n_precise = sum(1 for o in orgs_json if o["lat"] is not None and o["loc"] != "approx")
 
 def city_list_rows():
     out = []
@@ -307,6 +265,9 @@ def city_list_rows():
     return "\n".join(out)
 
 SECTORS = sorted(set(r["type"] for r in blist))
+CAT_LEGEND = "".join(
+    f'<span><i class="sw" style="background:{CATCOLOR.get(s, "#9e9e9e")};border-radius:50%"></i>{esc(s)}</span>'
+    for s in SECTORS)
 
 # ============================================================ structured data (index only)
 graph = {"@context": "https://schema.org", "@graph": [
@@ -399,6 +360,8 @@ CSS = """
           border-radius:20px; cursor:pointer; font:inherit; font-size:.9rem; }
   .chip:hover { border-color:#0b5; }
   .chip.active { background:#0b5; color:#fff; border-color:#0b5; }
+  #map { height:520px; border:1px solid var(--line); border-radius:12px; z-index:0; }
+  .leaflet-popup-content { font:14px/1.4 system-ui; }
   .filters { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:1rem 0; }
   .filters select, .filters input { width:auto; max-width:none; margin:0; }
   .citymap .commune { fill:#eef4ee; stroke:#c2d4c2; stroke-width:0.8; }
@@ -575,19 +538,16 @@ city_body = f"""
     <input id="f-search" placeholder="Search name&hellip;" style="max-width:190px">
     <span id="count" style="color:var(--mut);font-size:.9rem"></span>
   </div>
-  <div class="legend" style="margin:0 0 .6rem">
-    <span><i class="sw" style="background:#0b5"></i> paid</span>
-    <span><i class="sw" style="background:#f0a33a"></i> partial</span>
-    <span><i class="sw" style="background:#d1495b"></i> unpaid</span>
-    <span><i class="sw" style="background:#999"></i> pay unknown</span>
-    <span><i class="sw" style="background:#b3b3b3;opacity:.5;border-radius:50%"></i> register org (approx. location)</span>
-  </div>
-  <div class="mapwrap">{svg_city}</div>
-  <p style="color:var(--mut);font-size:.82rem;margin:.3rem 0 0">{len(blist)} organisations in the
-  directory: {len([r for r in blist if r.get("loc") != "approx"])} curated with precise locations and known
-  pay, plus {len([r for r in blist if r.get("loc") == "approx"])} from the <strong>EU Transparency
-  Register</strong> shown at <strong>postcode-level (approximate)</strong> with pay still to confirm.
-  {n_mapped} are on the map; the rest are list-only. Filter by sector or search to narrow it down.</p>
+  <div class="legend" style="margin:0 0 .5rem">{CAT_LEGEND}</div>
+  <label style="display:inline-flex;align-items:center;gap:.4rem;font-weight:400;margin:.2rem 0 .6rem">
+    <input type="checkbox" id="reg-toggle" style="width:auto">
+    Also show the {len([r for r in blist if r.get("loc") == "approx"])} EU Transparency Register orgs
+    (faint dots, <strong>approximate postcode-level</strong> location)</label>
+  <div id="map"></div>
+  <p style="color:var(--mut);font-size:.82rem;margin:.4rem 0 0">{n_precise} organisations are precisely
+  located on the map; the ~{len([r for r in blist if r.get("loc") == "approx"])} from the
+  <strong>EU Transparency Register</strong> are postcode-level only (toggle above) and fully searchable in
+  the list below. EU institutions are shown in <span style="color:#1d6fb8;font-weight:600">blue</span>.</p>
 
   <div class="scroll"><table>
     <thead><tr><th>Organisation</th><th>Type</th><th>Paid</th><th class="num">Stipend/mo</th>
@@ -599,30 +559,53 @@ city_body = f"""
   <a href="/questionnaire.html">How the status ledger works</a></p>
 """
 
-FILTER_JS = "const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + """;
-  var sector='', EL={};                       // index data-i -> [marker, row] once, so filter is O(n)
+CITY_JS = ("const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + ";\n"
+    + "const CAT=" + json.dumps(CATCOLOR, ensure_ascii=False) + ";\n" + r"""
+  var sector='', regOn=false, EL={};
   document.querySelectorAll('[data-i]').forEach(function(e){
     var k=e.getAttribute('data-i'); (EL[k]=EL[k]||[]).push(e); });
-  function apply(){
-    var paid=document.getElementById('f-paid').value, st=document.getElementById('f-status').value,
-        q=document.getElementById('f-search').value.toLowerCase(), n=0;
-    ORGS.forEach(function(o){
-      var show=(!sector||o.type===sector)&&(!paid||o.paid===paid)&&(!st||o.status===st)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
-      var els=EL[o.i]; if(els){ for(var j=0;j<els.length;j++) els[j].style.display=show?'':'none'; }
-      if(show) n++;
-    });
-    document.getElementById('count').textContent=n+' of '+ORGS.length+' shown';
-  }
-  document.querySelectorAll('.chip').forEach(function(c){
-    c.addEventListener('click',function(){
-      document.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('active'); });
-      c.classList.add('active'); sector=c.getAttribute('data-sector'); apply();
-    });
+  var map=L.map('map',{preferCanvas:true,scrollWheelZoom:false}).setView([50.8425,4.363],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+  var curatedLayer=L.layerGroup().addTo(map), regLayer=L.layerGroup();
+  var CM=[], RM=[];
+  ORGS.forEach(function(o){
+    if(o.lat==null) return;
+    var ap=o.loc==='approx';
+    var m=L.circleMarker([o.lat,o.lon],{radius:ap?4:7,color:'#fff',weight:ap?0:1.5,
+      fillColor:CAT[o.type]||'#9e9e9e',fillOpacity:ap?0.5:0.95});
+    m.bindPopup('<b>'+o.name+'</b><br>'+o.type+(o.pay?(' &middot; €'+o.pay+'/mo'):'')
+      +(ap?'<br><em>approx. location (postcode-level)</em>':'')
+      +'<br><a href="'+o.url+'" target="_blank" rel="noopener">website</a>');
+    o._m=m; (ap?RM:CM).push(o);
   });
+  function pass(o){
+    var q=document.getElementById('f-search').value.toLowerCase(),
+        p=document.getElementById('f-paid').value, s=document.getElementById('f-status').value;
+    return (!sector||o.type===sector)&&(!p||o.paid===p)&&(!s||o.status===s)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
+  }
+  function drawMap(){
+    curatedLayer.clearLayers(); regLayer.clearLayers();
+    CM.forEach(function(o){ if(pass(o)) curatedLayer.addLayer(o._m); });
+    if(regOn){ RM.forEach(function(o){ if(pass(o)) regLayer.addLayer(o._m); }); }
+  }
+  function apply(){
+    var n=0;
+    ORGS.forEach(function(o){ var show=pass(o), els=EL[o.i];
+      if(els){ for(var j=0;j<els.length;j++) els[j].style.display=show?'':'none'; }
+      if(show) n++; });
+    document.getElementById('count').textContent=n+' of '+ORGS.length+' shown';
+    drawMap();
+  }
+  document.querySelectorAll('.chip').forEach(function(c){ c.addEventListener('click',function(){
+    document.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('active'); });
+    c.classList.add('active'); sector=c.getAttribute('data-sector'); apply(); }); });
   ['f-paid','f-status','f-search'].forEach(function(id){
     document.getElementById(id).addEventListener('input',apply); });
+  document.getElementById('reg-toggle').addEventListener('change',function(e){
+    regOn=e.target.checked; if(regOn){ regLayer.addTo(map); } else { map.removeLayer(regLayer); } drawMap(); });
   apply();
-"""
+""")
 
 submit_body = f"""
   <h1>Add a place, or tell us your conditions</h1>
@@ -912,9 +895,10 @@ PAGES = {
         f"pay floor for interns.", index_body, "/", head_extra=index_head,
         tail='<div id="tip"></div>\n<script>' + TIP_JS + '</script>'),
     "city.html": shell("Brussels internship dashboard &mdash; filterable map | internunion",
-        f"A filterable map of {len(blist)} organisations in Brussels that host interns: sector, whether "
-        "paid, stipend and the response-status ledger. More EU cities coming soon.", city_body, "/city.html",
-        tail='<div id="tip"></div>\n<script>' + TIP_JS + FILTER_JS + '</script>'),
+        f"A road map of {len(blist)} organisations in Brussels that host interns, by category: EU "
+        "institutions, NGOs, consultancies, think tanks, law firms and more.", city_body, "/city.html",
+        head_extra='<link rel="stylesheet" href="/vendor/leaflet.css">\n',
+        tail='<script src="/vendor/leaflet.js"></script>\n<script>' + CITY_JS + '</script>'),
     "submit.html": shell("Submit a place or your internship conditions | internunion",
         "Add a Brussels/EU workplace that hosts interns and tell us the real pay and conditions. No login, "
         "anonymous by default, GDPR-compliant.", submit_body, "/submit.html"),
@@ -952,6 +936,9 @@ for name, content in PAGES.items():
 (OUT / "sitemap.xml").write_text(sitemap_xml, encoding="utf-8")
 shutil.copyfile(ROOT / "data" / "institutions.csv", OUT / "institutions.csv")
 shutil.copyfile(ROOT / "data" / "countries.csv", OUT / "countries.csv")
+(OUT / "vendor").mkdir(exist_ok=True)                       # vendored Leaflet (roads map)
+for v in ("leaflet.js", "leaflet.css"):
+    shutil.copyfile(ROOT / "assets" / "vendor" / v, OUT / "vendor" / v)
 
 idx = (OUT / "index.html").read_text(encoding="utf-8")
 city = (OUT / "city.html").read_text(encoding="utf-8")
@@ -959,8 +946,9 @@ assert len(countries) == 27, f"expected 27 EU countries, got {len(countries)}"
 assert '<svg' in idx and idx.count("<path") >= 27, "Europe map paths missing"
 assert '"@type": "Dataset"' in idx, "Dataset JSON-LD missing"
 assert idx.count("<tr>") == len(countries) + 1, "index should hold only the country table"
-assert city.count('class="mk') == n_mapped, "city markers != geocoded Brussels orgs"
+assert 'id="map"' in city and "leaflet.js" in city, "city Leaflet map missing"
 assert city.count("<tr") == len(blist) + 1, "city list rows != all Brussels orgs"
+assert (OUT / "vendor" / "leaflet.js").exists(), "vendored leaflet missing"
 json.loads(idx.split('application/ld+json">', 1)[1].split("</script>", 1)[0])  # JSON-LD parses
 for p in PAGES:                            # every page has nav, main and footer
     h = (OUT / p).read_text(encoding="utf-8")
