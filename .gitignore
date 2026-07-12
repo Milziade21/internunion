@@ -5,5 +5,7 @@ __pycache__/
 public/
 # Cached 113MB Transparency Register download (data/ingest_register.py regenerates it)
 assets/_register.xml
+# Contact emails = personal data. NEVER commit or publish. Local questionnaire use only.
+data/contacts.local.csv
 # Raw deep-research exports (18MB of .docx, kept local; provenance summarised in data/SOURCES.md)
 internunion_Google deep research prompts/
