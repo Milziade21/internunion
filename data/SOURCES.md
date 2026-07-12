@@ -12,9 +12,18 @@ via Gemini Deep Research (July 2026). Treat every stipend as provisional until t
 opened. Known conflict already flagged in-row: EESC (1370 vs 1538.88).
 
 ## Column meaning
-`response_status`: **classified** = from research, unverified · **answered** = institution replied to
-questionnaire · **not answered** = questionnaire sent, no reply. This column is the lever — a public
-"did not respond to a standardised questionnaire" is defensible and uncomfortable.
+`response_status`: **classified** = from research, unverified · **pending** = questionnaire sent, in
+window · **verified** = replied, compliant · **disclosed** = replied, sub-standard · **refused** = no
+reply after contact. This column is the lever — a public "refused to disclose" is defensible.
+`loc`: **exact** = precisely geocoded from a street address · **approx** = postcode-level only.
+
+## Comprehensive layer: the EU Transparency Register
+Beyond the ~69 curated Brussels orgs, `institutions.csv` now includes ~3,300 organisations with a
+Brussels office pulled from the **EU Transparency Register** (daily open-data XML, 17k+ registrants,
+filtered to postcodes 1000-1210). These are **candidate** internship hosts: `internship_open=unknown`,
+`paid=unknown`, `response_status=classified`, `loc=approx` (placed at their postcode centroid with a
+deterministic jitter, not a verified street location). Regenerate with `python3 data/ingest_register.py`.
+Source: <https://transparency-register.europa.eu> (odplastorganisationxml_en).
 
 ## The rent constant (housing index)
 Single number, updateable in one place. Source: Brukot / Federia Rental Barometer 2025 (pub. Feb 2026).

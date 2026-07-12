@@ -274,13 +274,17 @@ for i, r in enumerate(blist):
     if not r["lat"]:
         continue
     x, y = bproject(float(r["lon"]), float(r["lat"]))
-    s = r["monthly_stipend_eur"].strip()
-    tip = (f'{r["name"]} - {r["type"]}. '
-           + (f'Paid EUR {float(s):.0f}/mo.' if s else
-              ('Unpaid.' if r["paid"] == "no" else 'Paid (amount unknown).' if r["paid"] == "yes" else 'Pay unknown.')))
-    markers.append(f'<circle class="mk" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="6" '
-                   f'fill="{PAID_COLOR.get(r["paid"], "#999")}" stroke="#fff" stroke-width="1.5" '
-                   f'data-tip="{esc(tip)}" tabindex="0"><title>{esc(tip)}</title></circle>')
+    if r.get("loc") == "approx":          # bulk register org: small, light, postcode-level
+        markers.append(f'<circle class="mk ap" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="3.2" '
+                       f'fill="#b3b3b3" data-tip="{esc(r["name"] + " - " + r["type"])}"/>')
+    else:                                 # curated org: solid, precisely geocoded
+        s = r["monthly_stipend_eur"].strip()
+        tip = (f'{r["name"]} - {r["type"]}. '
+               + (f'Paid EUR {float(s):.0f}/mo.' if s else
+                  ('Unpaid.' if r["paid"] == "no" else 'Paid (amount unknown).' if r["paid"] == "yes" else 'Pay unknown.')))
+        markers.append(f'<circle class="mk" data-i="{i}" cx="{x:.1f}" cy="{y:.1f}" r="6" '
+                       f'fill="{PAID_COLOR.get(r["paid"], "#999")}" stroke="#fff" stroke-width="1.5" '
+                       f'data-tip="{esc(tip)}" tabindex="0"><title>{esc(tip)}</title></circle>')
 n_mapped = len(markers)
 
 svg_city = f'''<svg viewBox="-6 -6 {BW+12:.0f} {BH+12:.0f}" class="map citymap" role="img"
@@ -401,6 +405,8 @@ CSS = """
   .citymap .commune:hover { fill:#e3efe3; }
   .citymap .cl { font:9px system-ui; fill:#93a393; pointer-events:none; text-anchor:middle; }
   .citymap .mk { cursor:pointer; }
+  .citymap .mk.ap { opacity:.5; }
+  .citymap .mk.ap:hover { opacity:.95; }
   .citymap .mk:hover, .citymap .mk:focus { stroke:#111; outline:none; }
   .box { background:#fafafa; border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; }
   .cta { background:#f2f8f4; border:1px solid #cfe8d8; border-radius:12px; padding:1.4rem; margin:1rem 0; }
@@ -573,13 +579,15 @@ city_body = f"""
     <span><i class="sw" style="background:#0b5"></i> paid</span>
     <span><i class="sw" style="background:#f0a33a"></i> partial</span>
     <span><i class="sw" style="background:#d1495b"></i> unpaid</span>
-    <span><i class="sw" style="background:#999"></i> unknown</span>
-    <span style="color:var(--mut)">&mdash; markers geocoded from public addresses (OpenStreetMap)</span>
+    <span><i class="sw" style="background:#999"></i> pay unknown</span>
+    <span><i class="sw" style="background:#b3b3b3;opacity:.5;border-radius:50%"></i> register org (approx. location)</span>
   </div>
   <div class="mapwrap">{svg_city}</div>
-  <p style="color:var(--mut);font-size:.82rem;margin:.3rem 0 0">{n_mapped} of {len(blist)} organisations
-  are placed on the map; the rest are in the list below (address still to confirm). Pay marked
-  <em>unknown</em> is what the questionnaire will fill in.</p>
+  <p style="color:var(--mut);font-size:.82rem;margin:.3rem 0 0">{len(blist)} organisations in the
+  directory: {len([r for r in blist if r.get("loc") != "approx"])} curated with precise locations and known
+  pay, plus {len([r for r in blist if r.get("loc") == "approx"])} from the <strong>EU Transparency
+  Register</strong> shown at <strong>postcode-level (approximate)</strong> with pay still to confirm.
+  {n_mapped} are on the map; the rest are list-only. Filter by sector or search to narrow it down.</p>
 
   <div class="scroll"><table>
     <thead><tr><th>Organisation</th><th>Type</th><th>Paid</th><th class="num">Stipend/mo</th>
@@ -592,13 +600,15 @@ city_body = f"""
 """
 
 FILTER_JS = "const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + """;
-  var sector='';
+  var sector='', EL={};                       // index data-i -> [marker, row] once, so filter is O(n)
+  document.querySelectorAll('[data-i]').forEach(function(e){
+    var k=e.getAttribute('data-i'); (EL[k]=EL[k]||[]).push(e); });
   function apply(){
     var paid=document.getElementById('f-paid').value, st=document.getElementById('f-status').value,
         q=document.getElementById('f-search').value.toLowerCase(), n=0;
     ORGS.forEach(function(o){
       var show=(!sector||o.type===sector)&&(!paid||o.paid===paid)&&(!st||o.status===st)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
-      document.querySelectorAll('[data-i="'+o.i+'"]').forEach(function(el){ el.style.display=show?'':'none'; });
+      var els=EL[o.i]; if(els){ for(var j=0;j<els.length;j++) els[j].style.display=show?'':'none'; }
       if(show) n++;
     });
     document.getElementById('count').textContent=n+' of '+ORGS.length+' shown';
@@ -949,7 +959,7 @@ assert len(countries) == 27, f"expected 27 EU countries, got {len(countries)}"
 assert '<svg' in idx and idx.count("<path") >= 27, "Europe map paths missing"
 assert '"@type": "Dataset"' in idx, "Dataset JSON-LD missing"
 assert idx.count("<tr>") == len(countries) + 1, "index should hold only the country table"
-assert city.count('class="mk"') == n_mapped, "city markers != geocoded Brussels orgs"
+assert city.count('class="mk') == n_mapped, "city markers != geocoded Brussels orgs"
 assert city.count("<tr") == len(blist) + 1, "city list rows != all Brussels orgs"
 json.loads(idx.split('application/ld+json">', 1)[1].split("</script>", 1)[0])  # JSON-LD parses
 for p in PAGES:                            # every page has nav, main and footer
