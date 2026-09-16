@@ -24,6 +24,10 @@ effects of unpaid versus paid placements, (c) retention and conversion of intern
 families and to public budgets. Include Eurobarometer and Eurofound findings on traineeships, the
 Commission's impact assessment for the 2024 Traineeships Directive proposal, and any national
 evaluations of pay floors (France, Italy, Spain). Distinguish causal studies from correlations.
+Add the competitiveness layer: what the Draghi report (2024), ECB analyses and Eurofound actually
+attribute the EU productivity gap to, and whether entry-level labour cost appears anywhere in that
+diagnosis, with the orders of magnitude, so the "competitiveness" and "beating China" objections in
+[STRATEGY.md](STRATEGY.md) section 10 can be answered with a number rather than a posture.
 Output: an evidence table by claim, with strength of evidence, and five one-sentence talking points
 that a centre-right and a centre-left politician could each say without embarrassment.
 

@@ -620,7 +620,10 @@ city_body = f"""
   <p id="mapfail">The 3D basemap could not load (it is served by OpenFreeMap). Every organisation is
   still listed in the table below, and the raw coordinates are in the
   <a href="/institutions.csv">CSV</a>.</p>
-  <p style="color:var(--mut);font-size:.82rem;margin:.4rem 0 0">{n_beams} organisations stand as beams,
+  <p style="color:var(--mut);font-size:.82rem;margin:.4rem 0 0">Buildings are the Brussels Region's own
+  <a href="https://datastore.brussels/">UrbIS 3D Constructions</a> (CC0), not the basemap's &mdash; heights
+  are real, derived per building as roof elevation minus ground elevation.
+  {n_beams} organisations stand as beams,
   placed at their street address; the ~{len([r for r in blist if r.get("loc") == "approx"])} from the
   <strong>EU Transparency Register</strong> are postcode-level only (toggle above, shown as flat dots)
   and fully searchable in the list below. Beam height is the disclosed monthly stipend on a
@@ -711,15 +714,18 @@ CITY_JS = ("const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + ";\n"
       var ls=map.getStyle().layers;
       for(var i=0;i<ls.length;i++){ if(ls[i].type==='symbol'){ firstLabel=ls[i].id; break; } }
 
-      map.addLayer({ id:'buildings3d', source:'openmaptiles', 'source-layer':'building',
-        type:'fill-extrusion', minzoom:13,
-        filter:['!=',['get','hide_3d'],true],
+      // Buildings come from UrbIS 3D Constructions (Brussels Region, CC0), NOT from the basemap:
+      // OpenFreeMap's building layer serves ~1% of Brussels (46 of 4,512 on the Schuman tile), which
+      // would render an almost empty skyline. Fetched by URL so the 5MB sits in its own cache entry
+      // instead of inside city.html. Covers the EU quarter; elsewhere the map is deliberately flat.
+      map.addSource('bld',{type:'geojson',data:'/brussels-buildings.geojson'});
+      map.addLayer({ id:'buildings3d', source:'bld', type:'fill-extrusion', minzoom:13,
         paint:{
-          'fill-extrusion-color':['interpolate',['linear'],['get','render_height'],
-            0,'#ffffff', 15,'#f4f5f6', 45,'#e4e6e9', 110,'#d0d3d7'],
-          'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,0,14.4,['get','render_height']],
-          'fill-extrusion-base':['case',['>=',['zoom'],14.4],['get','render_min_height'],0],
-          'fill-extrusion-opacity':0.94,
+          'fill-extrusion-color':['interpolate',['linear'],['get','h'],
+            0,'#ffffff', 12,'#f5f6f7', 30,'#e8eaec', 60,'#d8dbdf', 110,'#c6cace'],
+          'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,0,14.4,['get','h']],
+          'fill-extrusion-base':0,
+          'fill-extrusion-opacity':0.95,
           'fill-extrusion-vertical-gradient':true }
       }, firstLabel);
 
@@ -1188,6 +1194,7 @@ for name, content in PAGES.items():
 shutil.copyfile(ROOT / "data" / "institutions.csv", OUT / "institutions.csv")
 shutil.copyfile(ROOT / "data" / "countries.csv", OUT / "countries.csv")
 if VAC.exists(): shutil.copyfile(VAC, OUT / "vacancies.csv")
+shutil.copyfile(ROOT / "assets" / "brussels-buildings.geojson", OUT / "brussels-buildings.geojson")
 (OUT / "vendor").mkdir(exist_ok=True)                       # vendored MapLibre GL (3D city map)
 for v in ("maplibre-gl.js", "maplibre-gl.css"):
     shutil.copyfile(ROOT / "assets" / "vendor" / v, OUT / "vendor" / v)
@@ -1205,6 +1212,7 @@ assert city.count("<tr") == len(blist) + 1, "city list rows != all Brussels orgs
 assert (OUT / "vendor" / "maplibre-gl.js").exists(), "vendored maplibre missing"
 jobs = (OUT / "jobs.html").read_text(encoding="utf-8")
 assert jobs.count('<tr data-level=') == len(vacs), "jobs page rows != vacancies.csv rows"
+assert (OUT / "brussels-buildings.geojson").stat().st_size > 1_000_000, "3D buildings layer missing"
 json.loads(idx.split('application/ld+json">', 1)[1].split("</script>", 1)[0])  # JSON-LD parses
 for p in PAGES:                            # every page has nav, main and footer
     h = (OUT / p).read_text(encoding="utf-8")

@@ -20,6 +20,30 @@ around one constraint: the maintainer has about 30 minutes a day.
 **North star.** Every internship in Europe is paid at least a livable floor, and interns are treated as
 the first rung of the workforce rather than as free labour.
 
+**The ask.** Six lines, written to be translated and dropped into any country without changing the
+argument. This is the portable part; the Brussels ledger is only the first place we test it.
+
+1. **If it is work, it is work.** A placement that produces deliverables under direction is
+   employment, whatever it is called, and that country's existing floor already applies to it. We
+   are not asking for a new wage. We are asking that the one already on the books not be avoided by
+   calling the person a learner.
+2. **Everything in writing, before the first day.** Tasks, learning objectives, named supervisor,
+   duration, pay.
+3. **A floor past a short threshold.** Beyond an orientation period, the national minimum or the
+   sectoral floor, indexed, in whatever form that country already uses.
+4. **A ceiling on duration.** Six months per employer, so that "trainee" cannot become a career stage.
+5. **The right to say so together.** Interns may join a union and speak collectively without
+   retaliation, and may ask in writing why a placement ended.
+6. **Published, not promised.** An employer can demonstrate all five by publishing its stipend and
+   its traineeship terms. That is the only thing this project asks of the organisations in the ledger.
+
+**Why the argument is about classification, not about pay.** A demand for higher pay meets the whole
+literature on wage floors and employment, and every conversation becomes an economics seminar. A
+demand that work be *classified* as work meets none of it: the floor already exists, was already
+voted, and is already paid by the employer next door. It is the same fight as platform and bogus
+self-employment, and it travels across borders without renegotiating any number. Keep the project on
+this ground.
+
 **Instrument.** Transparency, not protest. A public, auditable dataset plus a public record of who
 answered. The record does the persuading; we describe, we do not accuse.
 
@@ -331,6 +355,16 @@ arguments that each political family already believes.
 | Fiscal hawks | **Public finance.** Paid interns pay contributions and taxes; unpaid ones are subsidised by families and, indirectly, by the state. Parliament, the EEAS and the Council of Europe all switched to paid and did not collapse. |
 | Progressives | **Equality and cohesion.** A European civil service that only the well-off can enter loses its legitimacy. |
 | Employers again | **Retention.** Paid interns stay, and the cost of hiring a known trainee is a fraction of an external hire. |
+
+**The four objections that actually come up, and the answer to each.** Two sentences, no more; the
+person asking is testing whether you fold, not waiting for a lecture.
+
+| Objection | Answer | Never say |
+|---|---|---|
+| "Cheap entry-level labour is how we stay competitive." | We are not asking to raise anyone's wage floor, only that the existing one apply to people doing the work. The employer who pays it is currently undercut by the one who does not, and that distortion is the competitiveness problem. | Anything that concedes the framing that this is a wage increase |
+| "The only thing that matters is beating China." | Nothing about intern stipends in Brussels moves a competitiveness number in either direction; the quantities are not comparable. What it does move is who can afford to enter the professions that write Europe's China policy, and selecting those people by their parents' income is a strategic choice nobody made on purpose. | Figures that imply intern pay is macro-relevant — it is not, and the claim is checkable |
+| "A pay floor would close small NGOs." | Then say so publicly and we will record it as published, since an organisation that cannot pay should be able to explain why, in writing, once. Where other countries introduced a floor they generally phased it in, and we would support the same here; research prompt 4 is what turns that into a citable list. | "They can afford it" — you do not know their books |
+| "It is training, not work." | Then the written agreement will say what is being learned, from whom, and for how long, and the question closes itself. Where there is no mentor and no learning plan, what is being described is a job. | "Everyone knows that is a lie" |
 
 **Words.** Use: fair pay, livable stipend, transparency, public record, verified, did not disclose,
 who answers. Avoid: exploitation, slavery, boycott, name-and-shame, refuse, scandal. Describe, never

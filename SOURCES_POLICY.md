@@ -58,6 +58,16 @@ Published coordinates credit BeST/BOSA and UrbIS/Paradigm.
 OpenFreeMap's vector tiles are excellent for roads, water and labels, but their `building` layer is
 **about 1% complete in Brussels**: 46 buildings served against 4,512 present in OpenStreetMap for the
 same Schuman tile. Raw OSM height coverage in the EU quarter is only about 3%. So the skyline is
-derived instead from **UrbIS 3D Constructions** (CC0, LoD2), where height is computed per building as
-the maximum roof-surface elevation minus the ground-surface elevation. That layer is republishable
-without attribution or share-alike obligations.
+derived instead from **UrbIS 3D Constructions** (CC0, LoD2).
+
+`assets/brussels-buildings.geojson` is that derived layer: **20,807 buildings** across the EU quarter
+(longitude 4.3600–4.4050, latitude 50.8300–50.8520), heights from 2.0 m to 118.4 m, median 17.1 m.
+Height per building is the maximum roof-surface elevation minus the ground-surface elevation. The
+source is six commune-level GeoPackages (203 MB zipped) rather than the 1.85 GiB region file. The
+Lambert 72 to WGS84 transform was validated against the Berlaymont footprint in OpenStreetMap: a
+centroid offset of 0.77 m and a median vertex distance of 0.07 m. Douglas-Peucker simplification at
+about 0.14 m on the ground cut vertices by 28% to fit the file under 6 MB. CC0 means no attribution
+string is legally required; we credit Brussels Region anyway because it is the decent thing to do.
+
+To regenerate it for another area, the working scripts are not in this repo; the inputs are the ATOM
+feed at `urbisdownload.datastore.brussels` and the rule above. Budget a couple of hours.

@@ -9,3 +9,5 @@ assets/_register.xml
 data/contacts.local.csv
 # Raw deep-research exports (18MB of .docx, kept local; provenance summarised in data/SOURCES.md)
 internunion_Google deep research prompts/
+# Cached 18MB BeST address download (data/geocode_precise.py re-downloads it)
+assets/_best_bru.zip
