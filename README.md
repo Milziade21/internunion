@@ -20,10 +20,14 @@ collectively-bargained internship conditions.
 The homepage is a **Europe choropleth** — each country shaded by intern pay ÷ capital-city room
 rent, grey hatching where there is no legal pay floor — with city pins for coverage (Brussels live,
 other hubs coming soon), and the **accountability ledger**. Projected from a GeoJSON at build time;
-no library. The **Brussels city dashboard** (`/city.html`) is a **Leaflet + OpenStreetMap road map**
-(vendored in `assets/vendor/`): curated orgs as category-coloured pins (EU institutions in blue),
-with the ~3,300 EU Transparency Register orgs behind a toggle (postcode-level, approximate). Category
-chips + pay/status/search filters drive the map and the directory list together. `build.py` also generates `submit`, `questionnaire` (the
+no library. The **Brussels city dashboard** (`/city.html`) is a **3D city map**: MapLibre GL
+(vendored in `assets/vendor/`) over OpenFreeMap's white-and-grey vector tiles, with OpenStreetMap
+buildings extruded. Each precisely-located organisation rises as a **beam** whose height is its
+disclosed monthly stipend, capped by a dot coloured by kind of place; organisations that have not
+disclosed pay are a short grey stub, never a low beam. The ~3,300 EU Transparency Register orgs sit
+behind a toggle as flat dots (postcode-level, approximate). Category chips + pay/status/search
+filters drive the map and the directory list together. `/jobs.html` lists **open internships** next to
+what each employer pays and whether they answered the questionnaire. `build.py` also generates `submit`, `questionnaire` (the
 instrument, published verbatim), `privacy` (GDPR), and `about` pages.
 
 ### Before launch, set four things in [`build.py`](build.py)
@@ -38,6 +42,11 @@ won't deliver and the contact links won't work until set.
 - **[`data/SOURCES.md`](data/SOURCES.md)** — the rent constant, the housing-index method,
   the research method box, and provenance.
 - **[`data/check.py`](data/check.py)** — validates the dataset and computes the housing index.
+- **[`data/vacancies.py`](data/vacancies.py)** — collects open internships from cleared sources only
+  (EPSO's consolidated view, the EU Agencies Network sitemap, employers' own ATS endpoints), files
+  each by required experience, and writes `data/vacancies.csv`. Never touches commercial job boards.
+- **[`data/verify_sources.py`](data/verify_sources.py)** — re-opens each stipend's source page and
+  reports whether the figure we publish is still there. A weekly job opens an issue on drift.
 - **[`build.py`](build.py)** — zero-dependency generator: turns the CSV into a static,
   search- and AI-discoverable site (`public/`) with schema.org `Dataset` JSON-LD, `robots.txt`,
   `llms.txt`, `sitemap.xml`, and an answer-first page.
@@ -84,7 +93,11 @@ Median internship stipend in the sample: ~€1400/month. A single room in a Brus
 ## Contributing
 
 The full data protocol (evidence classes, response ledger, PR checks) is in [`CONTRIBUTING.md`](CONTRIBUTING.md);
-the organising plan, allies and governance in [`STRATEGY.md`](STRATEGY.md); research to run in [`RESEARCH_PROMPTS.md`](RESEARCH_PROMPTS.md).
+the organising plan and allies in [`STRATEGY.md`](STRATEGY.md); who owns the data and why it is not a
+blockchain DAO in [`GOVERNANCE.md`](GOVERNANCE.md); what we may and may not fetch in
+[`SOURCES_POLICY.md`](SOURCES_POLICY.md); the employer email series in
+[`outreach/employer-emails.md`](outreach/employer-emails.md); research to run in
+[`RESEARCH_PROMPTS.md`](RESEARCH_PROMPTS.md).
 
 Corrections and additions welcome — especially first-hand stipend figures and internship
 experiences. Open an issue or a pull request against `data/institutions.csv`. If you're an

@@ -28,6 +28,17 @@ answered. The record does the persuading; we describe, we do not accuse.
 transposition, Belgian follow-up to the European Social Charter ruling, national laws) → paid
 internships become the norm and unpaid ones become reputationally expensive.
 
+**Why Brussels is the testbed, not just the first city.** Brussels' defining feature is that its
+interns *leave*. Cohorts turn over every five months and go home to Rome, Warsaw, Madrid and Dublin.
+That is usually described as the thing that killed every previous Brussels intern campaign, and it
+did. Inverted, it is the distribution engine: the method, the questionnaire and the code are all
+public and forkable, so an intern who used the Brussels map can stand up their own city with a CSV
+and a weekend. **If even one country reproduces the system, the project has already won**, because
+the argument stops being one website's claim and becomes a comparable measurement. So every design
+decision is judged by one question: does this make the thing easier to copy? That is why the
+questionnaire is published verbatim, why the pipeline is stdlib-only with no account to create, and
+why a city goes live on 25 rows rather than 500.
+
 **Three horizons.**
 1. *Brussels proof (Oct 2026 – mid 2027).* A defensible dataset, a working response ledger, first
    employers moved, first press, first allies.
@@ -165,7 +176,28 @@ dashboard, a co-branded chart).
 - **Bruxelles Formation and Actiris** (CIP administrators). Ask: confirm the CIP figures and the
   "who to call" text on the rights page. Give: a clearer public explanation of the CIP than exists today.
 
-**Tier 2, over the winter.** Belgian union youth wings (Jeunes FGTB, Jeunes CSC, CGSLB); VUB and ULB
+**The youth and union layer — who can actually carry a process.** The question is not who agrees
+with us; in Brussels almost everyone does. It is who is still here in eighteen months. Youth
+organisations turn over with their cohorts and their elected boards; unions do not, and unions have
+lawyers. Rank by permanence and by what each one holds that we do not.
+
+| Ally | Holds what we lack | Ask | Give |
+|---|---|---|---|
+| **ETUC Youth Committee** (Brussels) | The only youth structure with a seat at European social dialogue, and affiliates in every member state | A named legal contact, and one line of support at the 10 November moment | Ledger cuts by sector |
+| **Belgian union youth wings** — Jeunes CSC / ACV Enter, Jeunes FGTB / ABVV Jongeren, Jong CGSLB | A Belgian legal service, permanent staff, and standing to act for someone on a CIP | Whether a CIP trainee can be represented, and by whom | Brussels rows; the questionnaire in FR and NL |
+| **CSC United Freelancers** (and the FGTB equivalent) | An existing Belgian union structure built for people who are *not* employees — the nearest template for interns | Thirty minutes on how they built it and what it cost | Nothing yet; this is a study call |
+| **European Youth Forum** | The one table where every European party youth wing already sits | Put intern pay on a Council of Members agenda once, so we brief them all in one room | A dataset they can quote |
+| **Conseil de la Jeunesse (FWB) and Vlaamse Jeugdraad** | A statutory right to hand their governments an opinion that must be received | An own-initiative opinion citing the ledger | The Brussels figures, before publication |
+| **European party youth wings** — YEPP, YES, LYMEC, FYEG, Young European Left, ECR youth, plus JEF Europe | Reach into their own parties' MEP offices, which is faster than ours | The same email, on the same day, to all of them | The same data to all of them |
+| **EU staff unions** — Union Syndicale, R&D, Generation 2004, FFPE, Solidarité Européenne | Standing inside the institutions, and a record on junior and precarious categories | Whether trainees can be represented at all under the Staff Regulations | Institutional trainee stipends counted against the floor |
+| **ETUI** (Brussels) | The union movement's research institute, publishing on precarious work | A method review, then a co-published note | Data and co-authorship |
+
+**Rule for the party youth wings: all or none, same day, same text.** One family's launch is the end
+of the cross-party frame (§10) and of every centre-right conversation after it. If only one answers,
+take the meeting, take no logo, and keep asking the others. Research prompt 11 exists to establish
+what any of this is legally, before we ask anyone for it.
+
+**Tier 2, over the winter.** VUB and ULB
 student social services and career services; College of Europe and IES student bodies; the European
 Students' Union and Erasmus Student Network Brussels; JEF Europe; Generation2030; CESI Youth; Social
 Platform; Transparency International EU and LobbyFacts (Corporate Europe Observatory) for the
@@ -191,6 +223,31 @@ follow-up the next morning.
 of Europe's European Youth Foundation fund youth-led projects at the size we would need, but both
 require a legal entity or a sponsoring organisation. Not before 2027.
 
+## 6b. Carrot and stick
+
+The ledger alone is a stick, and a stick-only project gets ignored by the people it needs. So the
+tool carries both, and the carrot is what makes an intern visit in the first place.
+
+**The carrot: every open internship in Brussels, in one place, with the pay attached.**
+`data/vacancies.py` collects live traineeship and internship postings and files each one by the
+experience it actually asks for: internship, entry (0–2 years), mid, senior, unspecified. It draws
+only on sources cleared in [SOURCES_POLICY.md](SOURCES_POLICY.md) — the EU's own consolidated
+traineeships view, the EU Agencies Network sitemap, and each employer's own applicant-tracking
+system. Job boards are never ingested; we link out to them. Crucially, each vacancy sits next to what
+that employer pays and whether they answered the questionnaire, which is the one thing no job board
+will ever show. That is the reason to come back, and the reason journalists and students will link to it.
+
+**The stick: a public record of who answered.** Four emails over 30 days to each organisation's public
+contact point, published verbatim in [outreach/employer-emails.md](outreach/employer-emails.md), plus
+ten self-reported criteria shown on the map as yes / no / not answered. An organisation that replies
+gets **verified compliant** and is listed above the ones that did not. The stick is only ever a dated
+fact about correspondence; the carrot is where the energy goes.
+
+**The loop that connects them.** A live vacancy identifies an employer. The employer gets the
+questionnaire. The reply, or its absence, becomes a public status. That status is then attached to
+their next vacancy. Every posting makes the ledger more complete, and every reply makes the job map
+more useful.
+
 ## 7. Product: catchy, simple, shareable
 
 Rebuild the front around one question, one number, one action.
@@ -207,7 +264,13 @@ Rebuild the front around one question, one number, one action.
   status, so a career service can drop it into its portal.
 - **Languages.** English first; French and Dutch for the Brussels legal pages; national leads
   translate their own pages.
-- **Do not build:** accounts, comments, a mobile app, a vacancy board. Link out.
+- **The 3D city.** The Brussels map is a white-and-grey three-dimensional city with a beam rising
+  from each organisation and a coloured cap on top. Beam height is the disclosed monthly stipend;
+  organisations that have not disclosed pay are a short grey stub, never a low beam, so missing data
+  never reads as bad pay. The point is that the employers who pay well visibly stand above the quarter.
+- **Open internships**, filterable by the experience level they ask for, each shown next to that
+  employer's pay and response status.
+- **Do not build:** accounts, comments, a mobile app, our own job board. We catalogue and link out.
 
 All of this stays a zero-dependency static build in `build.py`. Each item is one Claude Code session
 scoped to one pull request.
@@ -317,9 +380,24 @@ minutes waits for a weekend or a collaborator. Say no to features.
 | Retaliation against the maintainer | Public disclosure, separation of personal and project identity, allies informed |
 | Scope creep | The "do not build" list; one PR per session |
 
+## 12b. Data ownership
+
+The ambition of putting the dataset beyond any one person's control is right, and
+[GOVERNANCE.md](GOVERNANCE.md) sets out how it is met: signed git history for tamper-evidence,
+MIT and CC BY licences so anyone can fork without permission, per-city ownership enforced by code
+owners, and a public request-for-comments process for any change to the method. It also explains why
+a blockchain DAO is not the mechanism. The short version is that an immutable ledger cannot honour a
+GDPR erasure request, and we hold interns' testimonies, so the two are incompatible in the
+jurisdiction we are trying to reform.
+
 ## 13. Decisions for the owner
 
 1. Approve the relabel of "refused to disclose" to "did not disclose" (done in this change, revert if you disagree).
 2. Pick the second city to scope in weeks 11–13: Luxembourg (data ready) or Geneva (ally ready).
 3. Decide whether the About page carries your name and your host organisation's disclosure now or after the first collaborator joins.
 4. Choose the form provider (Formspree or Tally) and point the domain, both under 30 minutes.
+5. Confirm the beam encoding: height = stipend, cap colour = kind of place. The alternative is cap
+   colour = response status, which is truer to the wedge but shows one colour until replies arrive.
+6. Approve the sourcing policy, in particular that jobsin.brussels and Idealist are permanently out
+   of scope because their terms forbid automated collection, and that Google geocoding is
+   disqualified because its terms forbid redistributing coordinates.

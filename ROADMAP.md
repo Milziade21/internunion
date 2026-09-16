@@ -19,7 +19,11 @@ Belgium; trainees' coverage depends on national law) and the proposed Traineeshi
 direction of travel. This is the moat — everything else supports it. Strategy, allies and governance: `STRATEGY.md`.
 
 ## Principles / what we will NOT build (the guardrails)
-- **No web crawlers over hundreds of bespoke sites.** Coverage-first: registers, RSS, ATS JSON APIs. (see `EU Job Tracker Architecture.docx`)
+- **No web crawlers over hundreds of bespoke sites.** Coverage-first: registers, sitemaps, ATS JSON APIs.
+  The binding list of what is and is not allowed, checked against each operator's own terms, is
+  `SOURCES_POLICY.md`. Headlines: jobsin.brussels and Idealist forbid automated collection in their
+  terms and are permanently out of scope; Google geocoding is disqualified because its terms forbid
+  redistributing coordinates; Brussels' own UrbIS data is CC0 and does the job for free.
 - **No dedicated machine.** The whole thing is a weekly cron job. Compute is never the bottleneck.
 - **No scraping LinkedIn / job boards.** ToS + bot-blocking + GDPR. Link out and integrate instead.
 - **No login until it's justified.** Submissions are anonymous by default; add LinkedIn OIDC only for *verification*, storing nothing.
@@ -49,6 +53,14 @@ direction of travel. This is the moat — everything else supports it. Strategy,
 3. **Track the 4 states** in `institutions.csv` (the `response_status` column already exists — extend the vocabulary).
 4. **Show it on the site** — the directory already renders status badges. Every reply visibly improves the page.
 5. This is the launch's ongoing engine: each flip from `not answered` → `answered`/`refused` is a story.
+
+## Phase 2b — Carrot and stick
+- **Carrot:** `/jobs.html` — every open internship from cleared sources, filed by required experience,
+  each shown next to what that employer pays and whether they answered. This is the reason to visit.
+- **Stick:** the four-email series in `outreach/employer-emails.md`, plus ten self-reported criteria
+  per organisation shown as yes / no / not answered.
+- **The loop:** a vacancy identifies an employer -> the employer gets the questionnaire -> the reply or
+  its absence becomes a public status -> that status is attached to their next vacancy.
 
 ## Phase 3 — Complementarity integrations (as capacity allows)
 - **LobbyFacts cross-ref** (highest bang-for-buck, pure open data): show an org's EU lobbying spend next

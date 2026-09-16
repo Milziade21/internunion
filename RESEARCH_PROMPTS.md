@@ -128,3 +128,56 @@ utilities, groceries, STIB fares including the under-25 tariff, health insurance
 CIP indexed minimum. Compare against the Blue Book, Schuman and Council stipends and against the
 Eurostat at-risk-of-poverty threshold for a single adult in Belgium. Output: a one-table update with
 sources and dates that can replace the constants in `build.py` and `data/SOURCES.md` directly.
+
+## 11. Representation: can interns be unionised in Brussels and in the EU institutions?
+
+Establish what collective representation of interns is legally possible in Brussels, and what has
+actually been built anywhere. Four layers, each answered separately.
+
+**(a) Belgian law.** For each status an intern in Brussels can hold — *convention d'immersion
+professionnelle* / beroepsinlevingsovereenkomst (CIP/BIO), curricular internship under a school
+agreement, Erasmus+ traineeship, IBO/FPI, volunteer under the 2005 volunteering law, student
+employment contract, and ordinary employment contract — determine: whether the person may join a
+trade union and be assisted by it; whether they are covered by a sectoral collective agreement
+(check at least CP/PC 200 for white-collar staff and CP/PC 329 for the socio-cultural sector, which
+between them cover most Brussels NGOs, associations, think tanks and trade associations); whether
+they count toward the headcount thresholds for a *délégation syndicale*, a CPPT and a works council,
+and whether they may vote or stand in the social elections; what protection exists against
+retaliation or non-renewal for union activity; and what the minimum allowance is, how it is indexed,
+and who enforces it. State the legal instrument and its date for every answer.
+
+**(b) The EU institutions.** Determine the exact legal status of Blue Book, Schuman, Council, EEAS,
+agency, political-group and MEP-office trainees relative to the Staff Regulations and the Conditions
+of Employment of Other Servants. Then: may the recognised staff unions and professional associations
+(Union Syndicale, R&D, Generation 2004, FFPE, Solidarité Européenne, TAO-AFI and others) admit or
+represent trainees, and has any of them tried? What are the trainee committees of each institution —
+how are they constituted, how are they elected, what are they formally entitled to do, and who do
+they speak to? Is there any mechanism resembling collective consultation for trainees? Cover the
+European Ombudsman's 2017 EEAS decision, the European Parliament's 2019 Bureau decision on MEP-office
+trainees, and any complaint, petition or case brought by trainees since 2015 and its outcome.
+
+**(c) Precedents anywhere.** Document every serious attempt to organise interns, trainees or
+comparable non-employees, with dates, sources and outcomes: FNV Young & United (NL) and how it won;
+ver.di Jugend and the German *Praktikum* campaigns; ÖGB/ÖGJ (AT); CGT and CFDT stagiaire structures
+(FR); NIdiL-CGIL and the Italian atypical-work unions; ICTU Youth (IE); UK graduate and intern
+organising after Intern Aware; US graduate-worker and congressional-intern organising; and, in
+Belgium specifically, **CSC United Freelancers** and the FGTB's equivalent structures for
+self-employed and platform workers — how they were founded, what legal form they took, how they are
+financed, how they solved the problem that their members are not employees, and how many members
+they hold. Say plainly which of these survived and which did not.
+
+**(d) What could be built here, and what it would cost.** Compare the realistic vehicles: a trainee
+section inside an existing Belgian union; an associate-membership category; a network hosted by a
+union youth wing; an independent ASBL with a cooperation protocol with one or more unions; a purely
+informational project with no representative claim. For each: legal requirements, what it may and
+may not call itself under Belgian law on trade-union denomination and collective bargaining, money
+and staff needed, time to set up, and the specific risk to an individual intern who fronts it.
+Address the structural obstacle directly: Brussels internships run in five-month cohorts, and most
+bubble employers sit below every Belgian threshold for workplace representation.
+
+**Output.** A table for (a) by status × right; a two-page brief for (b) naming the bodies that exist
+and what they can do; a precedent table for (c) with founding date, legal form, member count and
+current status; and for (d) a one-page recommendation with a first, second and third option, the
+argument against each, and the three questions that must be put to a Belgian union lawyer before
+anything is announced. Name, for each of (a) to (d), the organisation and public channel to verify
+the answer with — no personal data beyond public office-holders.
