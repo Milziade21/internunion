@@ -248,6 +248,7 @@ orgs_json = []
 for i, r in enumerate(blist):
     s = r["monthly_stipend_eur"].strip()
     orgs_json.append({"i": i, "name": r["name"], "type": r["type"], "paid": r["paid"],
+                      "open": r["internship_open"],
                       "status": r["response_status"], "loc": r.get("loc", "exact"),
                       "url": r["source_url"], "pay": (f"{float(s):.0f}" if s else ""),
                       "lat": (float(r["lat"]) if r["lat"] else None),
@@ -284,9 +285,18 @@ def _props(o, pay):
             "p": o["paid"], "st": o["status"], "e": o["pay"], "u": o["url"]}
 
 
+# A beam is a CLAIM, so only organisations we have actually researched get one: we know whether they
+# host interns (internship_open is not "unknown"), or they carry a stipend or a response status.
+# The other ~3,300 are EU Transparency Register imports we have not yet put a question to; they are
+# flat dots, now at their real street address rather than a postcode centroid, but silent about pay.
+# Before geocoding this distinction rode on loc=exact vs approx; geocoding made nearly everything
+# exact, so the marker had to move to the research fields themselves.
+def has_signal(o):
+    return o["open"] != "unknown" or bool(o["pay"]) or o["status"] != "classified"
+
 beam_geo = {"type": "FeatureCollection", "features": []}
 for o in orgs_json:
-    if o["lat"] is None or o["loc"] == "approx": continue   # approx orgs are flat dots, built client-side
+    if o["lat"] is None or o["loc"] == "approx" or not has_signal(o): continue
     pr = _props(o, o["pay"])
     pay = float(o["pay"]) if o["pay"] else None
     h = round(beam_height(pay), 1)
@@ -298,6 +308,10 @@ for o in orgs_json:
         "geometry": {"type": "Polygon", "coordinates": _ring(o["lon"], o["lat"], 14.0)},
         "properties": dict(pr, k="c", h=h, h2=round(h + CAP_H, 1), c=colour)})
 n_beams = len(beam_geo["features"]) // 2
+n_dots = sum(1 for o in orgs_json if o["lat"] is not None and not has_signal(o))
+n_exact = sum(1 for o in orgs_json if o["loc"] == "exact")
+n_approx = sum(1 for o in orgs_json if o["loc"] == "approx")
+n_noloc = sum(1 for o in orgs_json if o["lat"] is None)
 
 def city_list_rows():
     out = []
@@ -603,8 +617,8 @@ city_body = f"""
   <div class="legend" style="margin:0 0 .5rem">{CAT_LEGEND}</div>
   <label style="display:inline-flex;align-items:center;gap:.4rem;font-weight:400;margin:.2rem 0 .6rem">
     <input type="checkbox" id="reg-toggle" style="width:auto">
-    Also show the {len([r for r in blist if r.get("loc") == "approx"])} EU Transparency Register orgs
-    (faint dots, <strong>approximate postcode-level</strong> location)</label>
+    Also show the {n_dots} organisations we have not questioned yet (flat dots, from the
+    <strong>EU Transparency Register</strong>)</label>
   <div class="legend" style="margin:0 0 .6rem">
     <span><span class="beamkey"></span>&nbsp;beam height = monthly stipend</span>
     <span><span class="beamkey stub"></span>&nbsp;grey stub = pay not disclosed</span>
@@ -621,15 +635,15 @@ city_body = f"""
   still listed in the table below, and the raw coordinates are in the
   <a href="/institutions.csv">CSV</a>.</p>
   <p style="color:var(--mut);font-size:.82rem;margin:.4rem 0 0">Buildings are the Brussels Region's own
-  <a href="https://datastore.brussels/">UrbIS 3D Constructions</a> (CC0), not the basemap's &mdash; heights
-  are real, derived per building as roof elevation minus ground elevation.
-  {n_beams} organisations stand as beams,
-  placed at their street address; the ~{len([r for r in blist if r.get("loc") == "approx"])} from the
-  <strong>EU Transparency Register</strong> are postcode-level only (toggle above, shown as flat dots)
-  and fully searchable in the list below. Beam height is the disclosed monthly stipend on a
-  &euro;{STIP_LO:.0f}&ndash;&euro;{STIP_HI:.0f} scale; organisations that have not disclosed pay are a
-  short grey stub, never a low beam. EU institutions are
-  <span style="color:#1d6fb8;font-weight:600">blue</span>.</p>
+  <a href="https://datastore.brussels/">UrbIS 3D Constructions</a> (CC0), not the basemap's, so the
+  heights are real: each is that building's roof elevation minus its ground elevation.
+  <strong>{n_beams} organisations we have researched stand as beams.</strong> Beam height is the
+  disclosed monthly stipend on a &euro;{STIP_LO:.0f}&ndash;&euro;{STIP_HI:.0f} scale; an organisation
+  that has not disclosed pay is a short grey stub, never a low beam, so a gap in our data never reads
+  as bad pay. EU institutions are <span style="color:#1d6fb8;font-weight:600">blue</span>.
+  The other {n_dots} are flat dots: they come from the EU Transparency Register and we have not put a
+  question to them yet. {n_exact} of all {len(blist)} are now placed at their real street address
+  ({n_approx} remain at postcode level, and {n_noloc} have no address on record at all).</p>
 
   <div class="scroll"><table>
     <thead><tr><th>Organisation</th><th>Type</th><th>Paid</th><th class="num">Stipend/mo</th>
@@ -645,13 +659,14 @@ CITY_JS = ("const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + ";\n"
     + "const BEAMS=" + json.dumps(beam_geo, ensure_ascii=False) + ";\n"
     + "const CAT=" + json.dumps(CATCOLOR, ensure_ascii=False) + ";\n" + r"""
   var sector='', regOn=false, EL={}, ready=false;
-  // register orgs are postcode-level: derive their flat dots from ORGS rather than shipping
-  // the same 3,200 coordinates a second time as GeoJSON.
+  // Every organisation we have no pay or response data for is a flat dot, derived from ORGS rather
+  // than shipping the same 3,000 coordinates a second time as GeoJSON. Most are now at their real
+  // street address; the ones still at postcode level are labelled as approximate in the popup.
   var REGPTS={type:'FeatureCollection',features:ORGS.filter(function(o){
-      return o.lat!=null && o.loc==='approx'; }).map(function(o){
+      return o.lat!=null && !(o.open!=='unknown' || o.pay || o.status!=='classified'); }).map(function(o){
       return {type:'Feature',geometry:{type:'Point',coordinates:[o.lon,o.lat]},
               properties:{i:o.i,n:o.name,nm:o.name.toLowerCase(),t:o.type,p:o.paid,
-                          st:o.status,e:o.pay,u:o.url}}; })};
+                          st:o.status,e:o.pay,u:o.url,a:o.loc}}; })};
   document.querySelectorAll('[data-i]').forEach(function(e){
     var k=e.getAttribute('data-i'); (EL[k]=EL[k]||[]).push(e); });
 
@@ -750,10 +765,10 @@ CITY_JS = ("const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + ";\n"
         map.on('mouseleave',id,function(){ map.getCanvas().style.cursor=''; });
         map.on('click',id,function(e){
           var f=e.features && e.features[0]; if(!f) return;
-          var d=f.properties, approx=(id==='reg-dots');
+          var d=f.properties;
           var html='<b>'+d.n+'</b><br>'+d.t
             +(d.e?(' &middot; &euro;'+d.e+'/mo'):' &middot; pay not disclosed')
-            +(approx?'<br><em>approximate location (postcode-level)</em>':'')
+            +(d.a==='approx'?'<br><em>approximate location (postcode-level)</em>':'')
             +(d.u?('<br><a href="'+d.u+'" target="_blank" rel="noopener">source</a>'):'');
           new maplibregl.Popup({closeButton:true,maxWidth:'260px'})
             .setLngLat(e.lngLat).setHTML(html).addTo(map);

@@ -53,6 +53,20 @@ cent are coworking brands and bare `c/o` lines, which are fixed by hand once and
 
 Published coordinates credit BeST/BOSA and UrbIS/Paradigm.
 
+## Have Your Say as an organisation-discovery engine
+
+`data/haveyoursay.py` reads the Commission's better-regulation feedback API. Every submission carries
+the respondent's organisation, its type, its country and its EU Transparency Register number, which
+joins straight onto `institutions.csv`. So a policy file yields the list of bodies lobbying it, and
+therefore the next employers to send the questionnaire to. It is a targeting source, not a vacancy
+source.
+
+Two constraints are built into the script rather than left to discipline. Every record also carries
+`firstName`, `surname` and `login`; those fields are discarded at ingest and never written to disk,
+and the self-test asserts they are absent from the keep-list. And the endpoint is the portal's own
+single-page-app backend, not a documented API, so it has no terms, no stability guarantee and must
+never become a build-time dependency.
+
 ## 3D buildings
 
 OpenFreeMap's vector tiles are excellent for roads, water and labels, but their `building` layer is
