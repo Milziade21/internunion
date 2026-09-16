@@ -1,0 +1,29 @@
+name: check
+on:
+  pull_request:
+  push: { branches: [main] }
+  schedule: [{ cron: "0 6 * * 1" }]   # Monday 06:00 UTC: verify sources
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python3 data/check.py
+      - run: python3 build.py
+  verify-sources:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions: { issues: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - id: v
+        run: |
+          python3 data/verify_sources.py > report.txt || echo "drift=1" >> "$GITHUB_OUTPUT"
+          cat report.txt
+      - if: steps.v.outputs.drift == '1'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh issue create --title "Source drift: $(date -u +%F)" --label data --body-file report.txt

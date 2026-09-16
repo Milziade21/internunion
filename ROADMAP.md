@@ -9,13 +9,14 @@ that does — and holds employers to account for answering.
 **The Employer Response Status ledger.** For each organisation we publicly show one of four states:
 
 - **Verified compliant** — replied to the standardised questionnaire with proof of paid, compliant terms.
-- **Response pending** — questionnaire delivered, inside the 14-day window.
+- **Response pending** — questionnaire delivered, inside the 30-day window (reminders at day 14 and 28).
 - **Disclosed unpaid / sub-standard** — replied, confirming unpaid or below the local cost-of-living floor.
-- **Refused to disclose** — declined or ignored the window.
+- **Did not disclose** — no reply after two reminders and 30 days (dated fact, never a motive).
 
 This is FOI-style accountability. Incumbents *structurally cannot* copy it: labelling a paying client
-"sub-standard" cannibalises their revenue. Under the 2026 EU Pay Transparency Directive, refusing to
-disclose is itself a red flag. This is the moat — everything else supports it.
+"sub-standard" cannibalises their revenue. The EU Pay Transparency Directive (not yet transposed in
+Belgium; trainees' coverage depends on national law) and the proposed Traineeships Directive set the
+direction of travel. This is the moat — everything else supports it. Strategy, allies and governance: `STRATEGY.md`.
 
 ## Principles / what we will NOT build (the guardrails)
 - **No web crawlers over hundreds of bespoke sites.** Coverage-first: registers, RSS, ATS JSON APIs. (see `EU Job Tracker Architecture.docx`)

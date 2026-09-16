@@ -83,6 +83,9 @@ Median internship stipend in the sample: ~€1400/month. A single room in a Brus
 
 ## Contributing
 
+The full data protocol (evidence classes, response ledger, PR checks) is in [`CONTRIBUTING.md`](CONTRIBUTING.md);
+the organising plan, allies and governance in [`STRATEGY.md`](STRATEGY.md); research to run in [`RESEARCH_PROMPTS.md`](RESEARCH_PROMPTS.md).
+
 Corrections and additions welcome — especially first-hand stipend figures and internship
 experiences. Open an issue or a pull request against `data/institutions.csv`. If you're an
 intern in Brussels, your data point moves this forward.

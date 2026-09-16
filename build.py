@@ -212,9 +212,9 @@ STATUS = {
     "pending":    ("response pending", "st-pending"),
     "verified":   ("verified compliant", "st-verified"),
     "disclosed":  ("disclosed sub-standard", "st-disclosed"),
-    "refused":    ("refused to disclose", "st-refused"),
+    "refused":    ("did not disclose", "st-refused"),
     "answered": ("verified compliant", "st-verified"),          # legacy aliases
-    "not answered": ("refused to disclose", "st-refused"),
+    "not answered": ("did not disclose", "st-refused"),
 }
 def inst_rows():
     def stipend(r):
@@ -480,10 +480,10 @@ index_body = f"""
     dashboard</a> is a public record of how each organisation answers our
     <a href="/questionnaire.html">standardised questionnaire</a>:</p>
     <p><span class="st st-classified">unverified</span> compiled from public research, not yet contacted &middot;
-    <span class="st st-pending">response pending</span> questionnaire sent, within the 14-day window &middot;
+    <span class="st st-pending">response pending</span> questionnaire sent, within the 30-day window &middot;
     <span class="st st-verified">verified compliant</span> replied with proof of paid, compliant terms &middot;
     <span class="st st-disclosed">disclosed sub-standard</span> replied, confirming unpaid or below the cost-of-living floor &middot;
-    <span class="st st-refused">refused to disclose</span> declined or ignored the window.</p>
+    <span class="st st-refused">did not disclose</span> declined or ignored the window.</p>
     <p style="margin-bottom:0"><strong>Missing data is shown, never invented.</strong> EU-27 figures come from the
     European Commission (DG EMPL) traineeship study, Eurostat minimum wages and HousingAnywhere/Numbeo rents (2026);
     Brussels rows from the EU Transparency Register, EU Whoiswho and official traineeship portals.</p>
@@ -534,7 +534,7 @@ city_body = f"""
   </div>
   <div class="filters">
     <select id="f-paid"><option value="">Paid: any</option><option value="yes">paid</option><option value="partial">partial</option><option value="no">unpaid</option><option value="unknown">unknown</option></select>
-    <select id="f-status"><option value="">Status: any</option><option value="classified">unverified</option><option value="pending">response pending</option><option value="verified">verified compliant</option><option value="disclosed">disclosed sub-standard</option><option value="refused">refused to disclose</option></select>
+    <select id="f-status"><option value="">Status: any</option><option value="classified">unverified</option><option value="pending">response pending</option><option value="verified">verified compliant</option><option value="disclosed">disclosed sub-standard</option><option value="refused">did not disclose</option></select>
     <input id="f-search" placeholder="Search name&hellip;" style="max-width:190px">
     <span id="count" style="color:var(--mut);font-size:.9rem"></span>
   </div>
@@ -681,17 +681,18 @@ questionnaire_body = f"""
   </div>
 
   <h2>The four response states</h2>
-  <p>Every listed organisation carries one public status. It shifts the burden of proof onto the employer &mdash;
-  and under the 2026 EU Pay Transparency Directive, refusing to disclose pay is itself a red flag.</p>
+  <p>Every listed organisation carries one public status, stated as a dated fact. It puts the burden of
+  proof on the employer, in line with the direction of travel set by the EU Pay Transparency Directive
+  (2023/970, not yet transposed in Belgium) and the proposed Traineeships Directive.</p>
   <ul>
     <li><span class="st st-verified">verified compliant</span> &mdash; replied and provided verifiable proof
       of paid, compliant terms (matching or exceeding the CIP index).</li>
     <li><span class="st st-pending">response pending</span> &mdash; questionnaire delivered; within the
-      standard 14-day window.</li>
+      standard 30-day window (reminders at day 14 and 28).</li>
     <li><span class="st st-disclosed">disclosed sub-standard</span> &mdash; replied, confirming the role is
       unpaid or falls below the local cost-of-living floor.</li>
-    <li><span class="st st-refused">refused to disclose</span> &mdash; declined to respond, or ignored the
-      delivery window.</li>
+    <li><span class="st st-refused">did not disclose</span> &mdash; no reply after two reminders and 30 days. The send date is
+      recorded; the organisation can attach a right of reply at any time.</li>
   </ul>
   <p>Organisations not yet contacted are shown as <span class="st st-classified">unverified</span> &mdash;
   compiled from public research and not yet put to the questionnaire.</p>

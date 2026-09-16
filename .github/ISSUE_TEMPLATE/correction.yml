@@ -1,0 +1,22 @@
+name: Correct a row
+description: A figure, status or address on the site is wrong or outdated.
+title: "[correction] <organisation>"
+labels: [data, correction]
+body:
+  - type: input
+    id: org
+    attributes: { label: Organisation as shown on the site }
+    validations: { required: true }
+  - type: textarea
+    id: wrong
+    attributes: { label: What is wrong, and what should it say? }
+    validations: { required: true }
+  - type: input
+    id: url
+    attributes: { label: Source that shows the correct value, placeholder: https://... }
+  - type: checkboxes
+    id: who
+    attributes:
+      label: Are you writing on behalf of the organisation?
+      options:
+        - label: Yes. I would like a right of reply attached to the row (a maintainer will contact the organisation's public address to confirm).
