@@ -82,15 +82,19 @@ why a city goes live on 25 rows rather than 500.
 ## 2. Where we stand (September 2026)
 
 - Live at internunion-production.up.railway.app; the custom domain internunion.com is configured in
-  the code but not yet pointed. The submit form endpoint is still a placeholder.
-- Dataset: 3,424 organisations, of which 69 are curated with addresses and 27 carry a stipend figure.
-  Every row is still `classified`, meaning compiled from research and not yet verified by opening
-  the source. The other ~3,350 rows are the EU Transparency Register layer (candidates, pay unknown).
-- Method, questionnaire, privacy page, guardrails and licences exist and are published.
+  the code but not yet pointed. **The submit form endpoint is still a placeholder — nothing a visitor
+  submits is delivered anywhere.** That is the single most urgent fix.
+- Dataset: 3,424 organisations. 69 are researched (we know whether they host interns), 27 carry a
+  stipend, and **2,973 of 3,345 Brussels rows are now pinpointed at their street address**, up from 55.
+  Every row is still `classified`: compiled from research, not yet verified by opening the source or
+  by a reply. Fourteen researched organisations have no address on record at all
+  (`data/TODO_addresses.md`).
+- The city map is a real 3D Brussels: 20,807 buildings with true heights from the Region's own CC0
+  data, with a beam per researched organisation whose height is its disclosed stipend.
+- Method, questionnaire, privacy page, guardrails and licences exist and are published. The sourcing
+  rules are now written down and checked against each operator's terms.
+- **Nothing has been sent to a single employer yet.** The ledger is built and empty. That is the work.
 - No collaborators yet, no legal entity, no money needed yet.
-- Validated by the research already done: the wedge (the response ledger), the guardrails (no
-  scraping of job boards or LinkedIn, no invented data), and the complementarity positioning with
-  job boards, review sites and civic-tech projects.
 
 ## 3. Who tried before, and what we learn from them
 
@@ -398,7 +402,7 @@ minutes waits for a weekend or a collaborator. Say no to features.
 
 | Weeks | Deliverables |
 |---|---|
-| 1–2 (to 1 Oct) | 27 stipend rows verified; form wired; domain pointed; About page disclosure; 1 October post and flyer; message to the trainee committees |
+| 1–2 (to 1 Oct) | **Wire the submit form** (nothing arrives today); 27 stipend rows verified at source; domain pointed; About-page disclosure; fill the 14 missing addresses; 1 October post and flyer; message to the trainee committees |
 | 3–6 | Questionnaire sent to the 69 curated organisations; first "verified compliant" badges; organisation pages shipped; European Youth Forum and ETUC Youth meetings held |
 | 7–10 | 10 November co-organised; first press table published; first collaborator holds a role with a backup; `MAINTAINERS.md` |
 | 11–13 | Luxembourg or Geneva scoped with a named lead; quarterly index no. 1; research prompts all run and folded into the About and Rights pages |
