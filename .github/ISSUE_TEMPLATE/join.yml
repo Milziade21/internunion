@@ -1,0 +1,44 @@
+name: Join the project
+description: Take a role - city lead, national lead, reviewer, or a one-off contribution.
+title: "[join] <your city or country>"
+labels: [join]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Roles are small on purpose: about two hours a month. You do not need to be a
+        developer for any of them except code, and you do not need to commit for ever - you need to
+        hand over to a named backup when you stop. Read GOVERNANCE.md for what each role involves.
+  - type: dropdown
+    id: role
+    attributes:
+      label: Which role?
+      options:
+        - City lead - own one city's rows, its rent figure and its legal note
+        - Backup for an existing role (say which below) - the most useful thing you can do right now
+        - National lead - own one country's legal page and country row
+        - Reviewer - approve data pull requests
+        - One-off contribution - I have data or a fix, no ongoing role
+        - Something else I can offer (translation, design, legal, press)
+    validations: { required: true }
+  - type: input
+    id: where
+    attributes:
+      label: Which city or country?
+      placeholder: e.g. Luxembourg
+  - type: textarea
+    id: about
+    attributes:
+      label: Anything we should know?
+      description: Not a CV. Whether you have interned there, read the local rules, or know people who have, is worth more.
+  - type: checkboxes
+    id: agree
+    attributes:
+      label: The three rules
+      options:
+        - label: I will not invent data. Missing stays missing, and every figure carries its source and date.
+          required: true
+        - label: I will describe, not accuse. A public status is a dated fact about correspondence, never a motive.
+          required: true
+        - label: If I stop, I will say so and hand over to a named backup rather than going quiet.
+          required: true

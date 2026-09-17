@@ -212,9 +212,9 @@ STATUS = {
     "pending":    ("response pending", "st-pending"),
     "verified":   ("verified compliant", "st-verified"),
     "disclosed":  ("disclosed sub-standard", "st-disclosed"),
-    "refused":    ("refused to disclose", "st-refused"),
+    "refused":    ("did not disclose", "st-refused"),
     "answered": ("verified compliant", "st-verified"),          # legacy aliases
-    "not answered": ("refused to disclose", "st-refused"),
+    "not answered": ("did not disclose", "st-refused"),
 }
 def inst_rows():
     def stipend(r):
@@ -230,10 +230,13 @@ def inst_rows():
             f'<td><a href="{esc(r["source_url"])}" rel="nofollow">source</a></td></tr>')
     return "\n".join(out)
 
-# ============================================================ Brussels city data (Leaflet)
-# The city map is Leaflet + OpenStreetMap tiles (real roads). Markers and filtering are client-side
-# (see CITY_JS) -- no database on the server. Curated orgs are precisely geocoded pins; register
-# orgs are postcode-level (loc=approx), shown behind a toggle and never as false street pins.
+# ============================================================ Brussels city data (MapLibre 3D)
+# The city map is MapLibre GL + OpenFreeMap vector tiles (positron = white/grey), with the OSM
+# building layer extruded to real heights. Each precisely-located organisation gets a BEAM: a thin
+# extruded column rising out of its building with a coloured cap on top. Beam height encodes the
+# monthly stipend, so the employers that pay well literally stand above the quarter. Filtering is
+# client-side via MapLibre expressions -- no database on the server. Register orgs are
+# postcode-level (loc=approx): flat faint dots behind a toggle, never false street pins.
 # category -> colour (EU institutions blue), shared by the map and the legend
 CATCOLOR = {"EU institution": "#1d6fb8", "EU agency": "#1d6fb8", "NGO": "#2e9e5b",
     "think tank": "#7e57c2", "consultancy": "#ef8a34", "trade association": "#159a9a",
@@ -245,12 +248,70 @@ orgs_json = []
 for i, r in enumerate(blist):
     s = r["monthly_stipend_eur"].strip()
     orgs_json.append({"i": i, "name": r["name"], "type": r["type"], "paid": r["paid"],
+                      "open": r["internship_open"],
                       "status": r["response_status"], "loc": r.get("loc", "exact"),
                       "url": r["source_url"], "pay": (f"{float(s):.0f}" if s else ""),
                       "lat": (float(r["lat"]) if r["lat"] else None),
                       "lon": (float(r["lon"]) if r["lon"] else None)})
 n_mapped = sum(1 for o in orgs_json if o["lat"] is not None)
 n_precise = sum(1 for o in orgs_json if o["lat"] is not None and o["loc"] != "approx")
+
+# --- beam geometry ------------------------------------------------------------
+# ponytail: a beam is two extruded octagons generated here at build time (thin stalk + wider cap)
+# rather than a custom WebGL layer -- it stays inside the MapLibre style spec, so no second library.
+# Ceiling: a few thousand beams before the GeoJSON gets heavy; past that, switch to deck.gl
+# ColumnLayer or move the beams into a vector tileset.
+BEAM_STUB_H = 45.0                      # pay not disclosed -> deliberately a stub, not a low beam
+BEAM_MIN_H, BEAM_MAX_H = 90.0, 340.0    # metres, so beams clear the ~50m EU-quarter roofline
+STIP_LO, STIP_HI = 900.0, 2500.0        # stipend range the height scale spans
+CAP_H = 18.0                            # the coloured dot on top
+EARTH_M_PER_DEG = 111320.0
+
+def beam_height(pay):
+    if pay is None: return BEAM_STUB_H
+    f = min(1.0, max(0.0, (pay - STIP_LO) / (STIP_HI - STIP_LO)))
+    return BEAM_MIN_H + f * (BEAM_MAX_H - BEAM_MIN_H)
+
+def _ring(lon, lat, r_m, n=8):
+    """An n-gon of radius r_m metres around (lon, lat), as a GeoJSON Polygon ring."""
+    dlat = r_m / EARTH_M_PER_DEG
+    dlon = r_m / (EARTH_M_PER_DEG * math.cos(math.radians(lat)))
+    pts = [[round(lon + dlon * math.cos(2 * math.pi * i / n), 6),
+            round(lat + dlat * math.sin(2 * math.pi * i / n), 6)] for i in range(n)]
+    return [pts + [pts[0]]]
+
+def _props(o, pay):
+    return {"i": o["i"], "n": o["name"], "nm": o["name"].lower(), "t": o["type"],
+            "p": o["paid"], "st": o["status"], "e": o["pay"], "u": o["url"]}
+
+
+# A beam is a CLAIM, so only organisations we have actually researched get one: we know whether they
+# host interns (internship_open is not "unknown"), or they carry a stipend or a response status.
+# The other ~3,300 are EU Transparency Register imports we have not yet put a question to; they are
+# flat dots, now at their real street address rather than a postcode centroid, but silent about pay.
+# Before geocoding this distinction rode on loc=exact vs approx; geocoding made nearly everything
+# exact, so the marker had to move to the research fields themselves.
+def has_signal(o):
+    return o["open"] != "unknown" or bool(o["pay"]) or o["status"] != "classified"
+
+beam_geo = {"type": "FeatureCollection", "features": []}
+for o in orgs_json:
+    if o["lat"] is None or o["loc"] == "approx" or not has_signal(o): continue
+    pr = _props(o, o["pay"])
+    pay = float(o["pay"]) if o["pay"] else None
+    h = round(beam_height(pay), 1)
+    colour = CATCOLOR.get(o["type"], "#9e9e9e")
+    beam_geo["features"].append({"type": "Feature",
+        "geometry": {"type": "Polygon", "coordinates": _ring(o["lon"], o["lat"], 4.5)},
+        "properties": dict(pr, k="s", h=h, sc=(colour if pay else "#9fa9b2"))})
+    beam_geo["features"].append({"type": "Feature",
+        "geometry": {"type": "Polygon", "coordinates": _ring(o["lon"], o["lat"], 14.0)},
+        "properties": dict(pr, k="c", h=h, h2=round(h + CAP_H, 1), c=colour)})
+n_beams = len(beam_geo["features"]) // 2
+n_dots = sum(1 for o in orgs_json if o["lat"] is not None and not has_signal(o))
+n_exact = sum(1 for o in orgs_json if o["loc"] == "exact")
+n_approx = sum(1 for o in orgs_json if o["loc"] == "approx")
+n_noloc = sum(1 for o in orgs_json if o["lat"] is None)
 
 def city_list_rows():
     out = []
@@ -360,8 +421,21 @@ CSS = """
           border-radius:20px; cursor:pointer; font:inherit; font-size:.9rem; }
   .chip:hover { border-color:#0b5; }
   .chip.active { background:#0b5; color:#fff; border-color:#0b5; }
-  #map { height:520px; border:1px solid var(--line); border-radius:12px; z-index:0; }
-  .leaflet-popup-content { font:14px/1.4 system-ui; }
+  #map { height:min(68vh,620px); min-height:380px; border:1px solid var(--line); border-radius:12px;
+         z-index:0; background:#eceef0; position:relative; overflow:hidden; }
+  #map canvas { outline:none; }
+  #maphint { position:absolute; left:.6rem; top:.6rem; z-index:2; background:rgba(255,255,255,.88);
+             border:1px solid var(--line); border-radius:7px; padding:.3rem .55rem; font-size:.76rem;
+             color:var(--mut); pointer-events:none; }
+  #mapfail { display:none; padding:1.4rem; font-size:.92rem; color:var(--mut); }
+  .maplibregl-popup-content { font:14px/1.45 system-ui; padding:.7rem .9rem; border-radius:9px; }
+  .maplibregl-popup-content b { font-size:1rem; }
+  .beamkey { display:inline-block; width:3px; height:15px; background:#1d6fb8; border-radius:2px;
+             position:relative; vertical-align:-3px; }
+  .beamkey::after { content:""; position:absolute; left:-3.5px; top:-4px; width:10px; height:10px;
+                    border-radius:50%; background:#1d6fb8; }
+  .beamkey.stub { height:6px; background:#9fa9b2; vertical-align:-1px; }
+  .beamkey.stub::after { background:#9fa9b2; }
   .filters { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:1rem 0; }
   .filters select, .filters input { width:auto; max-width:none; margin:0; }
   .citymap .commune { fill:#eef4ee; stroke:#c2d4c2; stroke-width:0.8; }
@@ -403,12 +477,14 @@ TIP_JS = """
 """
 
 NAV = ('<header class="nav"><a href="/" class="brand">internunion</a><nav>'
-       '<a href="/">Map</a> <a href="/city.html">Cities</a> <a href="/rights.html">Rights</a> '
+       '<a href="/">Map</a> <a href="/city.html">Cities</a> <a href="/jobs.html">Internships</a> '
+       '<a href="/rights.html">Rights</a> '
        '<a href="/blog.html">Blog</a> <a href="/submit.html">Submit</a> <a href="/about.html">About</a> '
        f'<a href="{GH}">GitHub</a></nav></header>')
 
 FOOTER = (f'<footer class="foot"><div><a href="/">Map</a> &middot; <a href="/city.html">Cities</a> '
-          f'&middot; <a href="/rights.html">Rights</a> &middot; <a href="/blog.html">Blog</a> '
+          f'&middot; <a href="/jobs.html">Internships</a> &middot; <a href="/rights.html">Rights</a> '
+          f'&middot; <a href="/blog.html">Blog</a> '
           f'&middot; <a href="/submit.html">Submit</a> '
           f'&middot; <a href="/questionnaire.html">Questionnaire</a> &middot; <a href="/about.html">About</a> '
           f'&middot; <a href="/privacy.html">Privacy</a> &middot; <a href="{PATREON_URL}">Support on Patreon</a> '
@@ -480,10 +556,10 @@ index_body = f"""
     dashboard</a> is a public record of how each organisation answers our
     <a href="/questionnaire.html">standardised questionnaire</a>:</p>
     <p><span class="st st-classified">unverified</span> compiled from public research, not yet contacted &middot;
-    <span class="st st-pending">response pending</span> questionnaire sent, within the 14-day window &middot;
+    <span class="st st-pending">response pending</span> questionnaire sent, within the 30-day window &middot;
     <span class="st st-verified">verified compliant</span> replied with proof of paid, compliant terms &middot;
     <span class="st st-disclosed">disclosed sub-standard</span> replied, confirming unpaid or below the cost-of-living floor &middot;
-    <span class="st st-refused">refused to disclose</span> declined or ignored the window.</p>
+    <span class="st st-refused">did not disclose</span> declined or ignored the window.</p>
     <p style="margin-bottom:0"><strong>Missing data is shown, never invented.</strong> EU-27 figures come from the
     European Commission (DG EMPL) traineeship study, Eurostat minimum wages and HousingAnywhere/Numbeo rents (2026);
     Brussels rows from the EU Transparency Register, EU Whoiswho and official traineeship portals.</p>
@@ -534,20 +610,40 @@ city_body = f"""
   </div>
   <div class="filters">
     <select id="f-paid"><option value="">Paid: any</option><option value="yes">paid</option><option value="partial">partial</option><option value="no">unpaid</option><option value="unknown">unknown</option></select>
-    <select id="f-status"><option value="">Status: any</option><option value="classified">unverified</option><option value="pending">response pending</option><option value="verified">verified compliant</option><option value="disclosed">disclosed sub-standard</option><option value="refused">refused to disclose</option></select>
+    <select id="f-status"><option value="">Status: any</option><option value="classified">unverified</option><option value="pending">response pending</option><option value="verified">verified compliant</option><option value="disclosed">disclosed sub-standard</option><option value="refused">did not disclose</option></select>
     <input id="f-search" placeholder="Search name&hellip;" style="max-width:190px">
     <span id="count" style="color:var(--mut);font-size:.9rem"></span>
   </div>
   <div class="legend" style="margin:0 0 .5rem">{CAT_LEGEND}</div>
   <label style="display:inline-flex;align-items:center;gap:.4rem;font-weight:400;margin:.2rem 0 .6rem">
     <input type="checkbox" id="reg-toggle" style="width:auto">
-    Also show the {len([r for r in blist if r.get("loc") == "approx"])} EU Transparency Register orgs
-    (faint dots, <strong>approximate postcode-level</strong> location)</label>
-  <div id="map"></div>
-  <p style="color:var(--mut);font-size:.82rem;margin:.4rem 0 0">{n_precise} organisations are precisely
-  located on the map; the ~{len([r for r in blist if r.get("loc") == "approx"])} from the
-  <strong>EU Transparency Register</strong> are postcode-level only (toggle above) and fully searchable in
-  the list below. EU institutions are shown in <span style="color:#1d6fb8;font-weight:600">blue</span>.</p>
+    Also show the {n_dots} organisations we have not questioned yet (flat dots, from the
+    <strong>EU Transparency Register</strong>)</label>
+  <div class="legend" style="margin:0 0 .6rem">
+    <span><span class="beamkey"></span>&nbsp;beam height = monthly stipend</span>
+    <span><span class="beamkey stub"></span>&nbsp;grey stub = pay not disclosed</span>
+    <span>cap colour = kind of place</span>
+  </div>
+  <div class="filters" style="margin:.2rem 0 .6rem">
+    <button type="button" class="chip" id="fitEU">Zoom to the EU quarter</button>
+    <button type="button" class="chip" id="fitall">Show all of Brussels</button>
+  </div>
+  <div id="map"><div id="maphint">drag to pan &middot; right-drag to rotate &middot; ctrl+scroll to zoom</div>
+    <noscript><p style="padding:1.4rem">The 3D map needs JavaScript. The full directory is in the
+    table below, and the raw data is a <a href="/institutions.csv">CSV download</a>.</p></noscript></div>
+  <p id="mapfail">The 3D basemap could not load (it is served by OpenFreeMap). Every organisation is
+  still listed in the table below, and the raw coordinates are in the
+  <a href="/institutions.csv">CSV</a>.</p>
+  <p style="color:var(--mut);font-size:.82rem;margin:.4rem 0 0">Buildings are the Brussels Region's own
+  <a href="https://datastore.brussels/">UrbIS 3D Constructions</a> (CC0), not the basemap's, so the
+  heights are real: each is that building's roof elevation minus its ground elevation.
+  <strong>{n_beams} organisations we have researched stand as beams.</strong> Beam height is the
+  disclosed monthly stipend on a &euro;{STIP_LO:.0f}&ndash;&euro;{STIP_HI:.0f} scale; an organisation
+  that has not disclosed pay is a short grey stub, never a low beam, so a gap in our data never reads
+  as bad pay. EU institutions are <span style="color:#1d6fb8;font-weight:600">blue</span>.
+  The other {n_dots} are flat dots: they come from the EU Transparency Register and we have not put a
+  question to them yet. {n_exact} of all {len(blist)} are now placed at their real street address
+  ({n_approx} remain at postcode level, and {n_noloc} have no address on record at all).</p>
 
   <div class="scroll"><table>
     <thead><tr><th>Organisation</th><th>Type</th><th>Paid</th><th class="num">Stipend/mo</th>
@@ -560,51 +656,150 @@ city_body = f"""
 """
 
 CITY_JS = ("const ORGS=" + json.dumps(orgs_json, ensure_ascii=False) + ";\n"
+    + "const BEAMS=" + json.dumps(beam_geo, ensure_ascii=False) + ";\n"
     + "const CAT=" + json.dumps(CATCOLOR, ensure_ascii=False) + ";\n" + r"""
-  var sector='', regOn=false, EL={};
+  var sector='', regOn=false, EL={}, ready=false;
+  // Every organisation we have no pay or response data for is a flat dot, derived from ORGS rather
+  // than shipping the same 3,000 coordinates a second time as GeoJSON. Most are now at their real
+  // street address; the ones still at postcode level are labelled as approximate in the popup.
+  var REGPTS={type:'FeatureCollection',features:ORGS.filter(function(o){
+      return o.lat!=null && !(o.open!=='unknown' || o.pay || o.status!=='classified'); }).map(function(o){
+      return {type:'Feature',geometry:{type:'Point',coordinates:[o.lon,o.lat]},
+              properties:{i:o.i,n:o.name,nm:o.name.toLowerCase(),t:o.type,p:o.paid,
+                          st:o.status,e:o.pay,u:o.url,a:o.loc}}; })};
   document.querySelectorAll('[data-i]').forEach(function(e){
     var k=e.getAttribute('data-i'); (EL[k]=EL[k]||[]).push(e); });
-  var map=L.map('map',{preferCanvas:true,scrollWheelZoom:false}).setView([50.8425,4.363],12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-  var curatedLayer=L.layerGroup().addTo(map), regLayer=L.layerGroup();
-  var CM=[], RM=[];
-  ORGS.forEach(function(o){
-    if(o.lat==null) return;
-    var ap=o.loc==='approx';
-    var m=L.circleMarker([o.lat,o.lon],{radius:ap?4:7,color:'#fff',weight:ap?0:1.5,
-      fillColor:CAT[o.type]||'#9e9e9e',fillOpacity:ap?0.5:0.95});
-    m.bindPopup('<b>'+o.name+'</b><br>'+o.type+(o.pay?(' &middot; €'+o.pay+'/mo'):'')
-      +(ap?'<br><em>approx. location (postcode-level)</em>':'')
-      +'<br><a href="'+o.url+'" target="_blank" rel="noopener">website</a>');
-    o._m=m; (ap?RM:CM).push(o);
-  });
-  function pass(o){
-    var q=document.getElementById('f-search').value.toLowerCase(),
-        p=document.getElementById('f-paid').value, s=document.getElementById('f-status').value;
-    return (!sector||o.type===sector)&&(!p||o.paid===p)&&(!s||o.status===s)&&(!q||o.name.toLowerCase().indexOf(q)>=0);
+
+  // --- list-side filtering works with or without the map -----------------------
+  function crit(){
+    return { q:document.getElementById('f-search').value.toLowerCase(),
+             p:document.getElementById('f-paid').value,
+             s:document.getElementById('f-status').value };
   }
-  function drawMap(){
-    curatedLayer.clearLayers(); regLayer.clearLayers();
-    CM.forEach(function(o){ if(pass(o)) curatedLayer.addLayer(o._m); });
-    if(regOn){ RM.forEach(function(o){ if(pass(o)) regLayer.addLayer(o._m); }); }
+  function pass(o,c){
+    return (!sector||o.type===sector)&&(!c.p||o.paid===c.p)&&(!c.s||o.status===c.s)
+        &&(!c.q||o.name.toLowerCase().indexOf(c.q)>=0);
   }
-  function apply(){
-    var n=0;
-    ORGS.forEach(function(o){ var show=pass(o), els=EL[o.i];
+  function applyList(){
+    var c=crit(), n=0;
+    ORGS.forEach(function(o){ var show=pass(o,c), els=EL[o.i];
       if(els){ for(var j=0;j<els.length;j++) els[j].style.display=show?'':'none'; }
       if(show) n++; });
     document.getElementById('count').textContent=n+' of '+ORGS.length+' shown';
-    drawMap();
   }
+  function mapFailed(){
+    var m=document.getElementById('map'), f=document.getElementById('mapfail');
+    if(m) m.style.display='none';
+    if(f) f.style.display='block';
+  }
+
+  // --- the 3D city ------------------------------------------------------------
+  var map;
+  try {
+    map = new maplibregl.Map({
+      container:'map',
+      style:'https://tiles.openfreemap.org/styles/positron',
+      center:[4.3805,50.8415], zoom:15.35, pitch:66, bearing:-24, maxPitch:80, minZoom:10,
+      antialias:true, cooperativeGestures:true, attributionControl:false
+    });
+  } catch(err){ mapFailed(); }
+
+  if(map){
+    map.addControl(new maplibregl.AttributionControl({compact:true}));   // style carries OFM/OMT/OSM credit
+    map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
+    map.addControl(new maplibregl.FullscreenControl(),'top-right');
+    document.getElementById('fitall').addEventListener('click',function(){
+      map.fitBounds([[4.3400,50.7900],[4.4200,50.8700]],{pitch:55,bearing:-24,padding:40,duration:900}); });
+    document.getElementById('fitEU').addEventListener('click',function(){
+      map.easeTo({center:[4.3800,50.8420],zoom:15.4,pitch:66,bearing:-24,duration:900}); });
+
+    // If the basemap never arrives (offline, blocked, service down) fall back to the table.
+    // A single missing tile or sprite must NOT count as failure -- only a style that never loads,
+    // so the sole trigger is 'load' not having fired in time.
+    var guard=setTimeout(function(){ if(!ready) mapFailed(); },15000);
+    map.on('error',function(e){
+      if(window.console) console.warn('map:',(e&&e.error&&e.error.message)||e); });
+
+    // 'style.load' (not 'load') is the hook for adding sources and layers: it fires as soon as the
+    // style is parsed, whereas 'load' additionally waits on a first full tile render and can stall.
+    map.on('style.load',function(){
+      ready=true; clearTimeout(guard);
+      // insert the extrusions under the first label layer so street names stay readable
+      var firstLabel;
+      var ls=map.getStyle().layers;
+      for(var i=0;i<ls.length;i++){ if(ls[i].type==='symbol'){ firstLabel=ls[i].id; break; } }
+
+      // Buildings come from UrbIS 3D Constructions (Brussels Region, CC0), NOT from the basemap:
+      // OpenFreeMap's building layer serves ~1% of Brussels (46 of 4,512 on the Schuman tile), which
+      // would render an almost empty skyline. Fetched by URL so the 5MB sits in its own cache entry
+      // instead of inside city.html. Covers the EU quarter; elsewhere the map is deliberately flat.
+      map.addSource('bld',{type:'geojson',data:'/brussels-buildings.geojson'});
+      map.addLayer({ id:'buildings3d', source:'bld', type:'fill-extrusion', minzoom:13,
+        paint:{
+          'fill-extrusion-color':['interpolate',['linear'],['get','h'],
+            0,'#ffffff', 12,'#f5f6f7', 30,'#e8eaec', 60,'#d8dbdf', 110,'#c6cace'],
+          'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,0,14.4,['get','h']],
+          'fill-extrusion-base':0,
+          'fill-extrusion-opacity':0.95,
+          'fill-extrusion-vertical-gradient':true }
+      }, firstLabel);
+
+      map.addSource('reg',{type:'geojson',data:REGPTS});
+      map.addLayer({ id:'reg-dots', source:'reg', type:'circle',
+        layout:{visibility:'none'},
+        paint:{ 'circle-radius':['interpolate',['linear'],['zoom'],11,1.5,16,4.5],
+                'circle-color':'#7c8894', 'circle-opacity':0.55 } }, firstLabel);
+
+      map.addSource('beams',{type:'geojson',data:BEAMS});
+      map.addLayer({ id:'beam-stalk', source:'beams', type:'fill-extrusion',
+        filter:['==',['get','k'],'s'],
+        paint:{ 'fill-extrusion-color':['get','sc'], 'fill-extrusion-base':0,
+                'fill-extrusion-height':['get','h'], 'fill-extrusion-opacity':0.6 } });
+      map.addLayer({ id:'beam-cap', source:'beams', type:'fill-extrusion',
+        filter:['==',['get','k'],'c'],
+        paint:{ 'fill-extrusion-color':['get','c'], 'fill-extrusion-base':['get','h'],
+                'fill-extrusion-height':['get','h2'], 'fill-extrusion-opacity':0.95 } });
+
+      ['beam-cap','beam-stalk','reg-dots'].forEach(function(id){
+        map.on('mouseenter',id,function(){ map.getCanvas().style.cursor='pointer'; });
+        map.on('mouseleave',id,function(){ map.getCanvas().style.cursor=''; });
+        map.on('click',id,function(e){
+          var f=e.features && e.features[0]; if(!f) return;
+          var d=f.properties;
+          var html='<b>'+d.n+'</b><br>'+d.t
+            +(d.e?(' &middot; &euro;'+d.e+'/mo'):' &middot; pay not disclosed')
+            +(d.a==='approx'?'<br><em>approximate location (postcode-level)</em>':'')
+            +(d.u?('<br><a href="'+d.u+'" target="_blank" rel="noopener">source</a>'):'');
+          new maplibregl.Popup({closeButton:true,maxWidth:'260px'})
+            .setLngLat(e.lngLat).setHTML(html).addTo(map);
+        });
+      });
+      applyMap();
+    });
+  }
+
+  function applyMap(){
+    if(!ready) return;
+    var c=crit(), f=[];
+    if(sector) f.push(['==',['get','t'],sector]);
+    if(c.p)    f.push(['==',['get','p'],c.p]);
+    if(c.s)    f.push(['==',['get','st'],c.s]);
+    if(c.q)    f.push(['>=',['index-of',c.q,['get','nm']],0]);
+    map.setFilter('beam-stalk',['all',['==',['get','k'],'s']].concat(f));
+    map.setFilter('beam-cap',  ['all',['==',['get','k'],'c']].concat(f));
+    map.setFilter('reg-dots',  f.length?['all'].concat(f):null);
+    map.setLayoutProperty('reg-dots','visibility',regOn?'visible':'none');
+  }
+  function apply(){ applyList(); applyMap(); }
+
   document.querySelectorAll('.chip').forEach(function(c){ c.addEventListener('click',function(){
     document.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('active'); });
     c.classList.add('active'); sector=c.getAttribute('data-sector'); apply(); }); });
   ['f-paid','f-status','f-search'].forEach(function(id){
     document.getElementById(id).addEventListener('input',apply); });
   document.getElementById('reg-toggle').addEventListener('change',function(e){
-    regOn=e.target.checked; if(regOn){ regLayer.addTo(map); } else { map.removeLayer(regLayer); } drawMap(); });
-  apply();
+    regOn=e.target.checked; applyMap(); });
+  applyList();
 """)
 
 submit_body = f"""
@@ -681,17 +876,18 @@ questionnaire_body = f"""
   </div>
 
   <h2>The four response states</h2>
-  <p>Every listed organisation carries one public status. It shifts the burden of proof onto the employer &mdash;
-  and under the 2026 EU Pay Transparency Directive, refusing to disclose pay is itself a red flag.</p>
+  <p>Every listed organisation carries one public status, stated as a dated fact. It puts the burden of
+  proof on the employer, in line with the direction of travel set by the EU Pay Transparency Directive
+  (2023/970, not yet transposed in Belgium) and the proposed Traineeships Directive.</p>
   <ul>
     <li><span class="st st-verified">verified compliant</span> &mdash; replied and provided verifiable proof
       of paid, compliant terms (matching or exceeding the CIP index).</li>
     <li><span class="st st-pending">response pending</span> &mdash; questionnaire delivered; within the
-      standard 14-day window.</li>
+      standard 30-day window (reminders at day 14 and 28).</li>
     <li><span class="st st-disclosed">disclosed sub-standard</span> &mdash; replied, confirming the role is
       unpaid or falls below the local cost-of-living floor.</li>
-    <li><span class="st st-refused">refused to disclose</span> &mdash; declined to respond, or ignored the
-      delivery window.</li>
+    <li><span class="st st-refused">did not disclose</span> &mdash; no reply after two reminders and 30 days. The send date is
+      recorded; the organisation can attach a right of reply at any time.</li>
   </ul>
   <p>Organisations not yet contacted are shown as <span class="st st-classified">unverified</span> &mdash;
   compiled from public research and not yet put to the questionnaire.</p>
@@ -888,6 +1084,78 @@ is regulated it ranges from covering 2.6x a room (Latvia) to 0.4x (Netherlands).
 - [Source & method]({GH}): repository, methodology, contributions
 """
 
+# ============================================================ open internships (the "carrot")
+# data/vacancies.csv is produced by data/vacancies.py from cleared sources only (SOURCES_POLICY.md).
+# Each posting is joined to what we know that employer pays, which is the thing no job board shows.
+# The join is an EXACT name match, extended by an explicit alias table (data/aliases.csv) because a
+# source spells an institution differently from our row ("(SatCen) European Union Satellite Centre"
+# vs "EU Satellite Centre (SatCen)"). Deliberately not fuzzy matching: the data policy keeps the data
+# path deterministic, so an unmatched employer shows "not yet listed" until someone adds one alias line.
+VAC, ALIAS = ROOT / "data" / "vacancies.csv", ROOT / "data" / "aliases.csv"
+vacs = list(csv.DictReader(open(VAC, encoding="utf-8"))) if VAC.exists() else []
+_by_name = {r["name"]: r for r in inst}
+if ALIAS.exists():
+    for a in csv.DictReader(open(ALIAS, encoding="utf-8")):
+        tgt = _by_name.get(a["institutions_name"])
+        if tgt: _by_name.setdefault(a["source_name"], tgt)
+LEVEL_ORDER = ["internship", "entry (0-2y)", "mid (2-5y)", "senior (5y+)", "unspecified"]
+
+def vac_rows():
+    out = []
+    for v in sorted(vacs, key=lambda r: (LEVEL_ORDER.index(r["level"]) if r["level"] in LEVEL_ORDER else 9,
+                                         r["org"].lower())):
+        emp = _by_name.get(v["org"])
+        stip = (emp or {}).get("monthly_stipend_eur", "").strip()
+        pay = f'&euro;{float(stip):.0f}' if stip else '&mdash;'
+        label, cls = STATUS[emp["response_status"]] if emp else ("not yet listed", "st-classified")
+        title = f'<a href="{esc(v["url"])}" target="_blank" rel="noopener">{esc(v["title"])}</a>' \
+                if v["url"] else esc(v["title"])
+        out.append(f'<tr data-level="{esc(v["level"])}"><td>{title}</td><td>{esc(v["org"])}</td>'
+                   f'<td>{esc(v["location"])}</td><td>{esc(v["level"])}</td>'
+                   f'<td class="num">{pay}</td><td><span class="st {cls}">{label}</span></td>'
+                   f'<td>{esc(v["posted"])}</td></tr>')
+    return "".join(out) or '<tr><td colspan="7">No open traineeships in the sources right now. '\
+        'The EU rounds open twice a year, in autumn and spring.</td></tr>'
+
+jobs_body = f"""
+  <h1>Open internships in Brussels and the EU institutions</h1>
+  <p class="tldr">Every open traineeship we can find from official sources, next to <strong>what that
+  employer pays</strong> and <strong>whether they answered our questionnaire</strong>. That pairing is
+  the whole point: a job board is paid by employers and will never tell you whether a placement is
+  affordable. Updated {TODAY}; {len(vacs)} open now.</p>
+  <div class="filters">
+    <select id="f-level"><option value="">Experience: any</option>
+      {"".join(f'<option value="{esc(l)}">{esc(l)}</option>' for l in LEVEL_ORDER)}</select>
+    <span id="vcount" style="color:var(--mut);font-size:.9rem"></span>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Role</th><th>Organisation</th><th>Location</th><th>Experience</th>
+    <th class="num">Pay/mo</th><th>Employer status</th><th>Deadline</th></tr></thead>
+    <tbody>{vac_rows()}</tbody>
+  </table></div>
+  <h2>Where these come from</h2>
+  <p>Only from the employer itself or an official public register: the EU's own consolidated
+  traineeships view, the EU Agencies Network sitemap, and each organisation's own recruitment system.
+  We never take listings from commercial job boards &mdash; several forbid it in their terms, and
+  auditing employers is a different job from advertising for them. The full rule is in
+  <a href="{GH}/blob/main/SOURCES_POLICY.md">SOURCES_POLICY.md</a>.</p>
+  <p><a href="/vacancies.csv">Download this as CSV</a> &middot;
+  <a href="/city.html">See where these employers are on the map</a> &middot;
+  <a href="/questionnaire.html">How the status ledger works</a></p>
+"""
+
+JOBS_JS = r"""
+  var rows=[].slice.call(document.querySelectorAll('tr[data-level]'));
+  function applyJobs(){
+    var v=document.getElementById('f-level').value, n=0;
+    rows.forEach(function(r){ var show=!v||r.getAttribute('data-level')===v;
+      r.style.display=show?'':'none'; if(show) n++; });
+    document.getElementById('vcount').textContent=n+' of '+rows.length+' shown';
+  }
+  document.getElementById('f-level').addEventListener('input',applyJobs);
+  applyJobs();
+"""
+
 PAGES = {
     "index.html": shell("Can interns afford Europe? Pay vs cost of living, EU-wide | internunion",
         f"An open map of internship pay against the cost of living across the EU-27, plus the Brussels "
@@ -895,10 +1163,10 @@ PAGES = {
         f"pay floor for interns.", index_body, "/", head_extra=index_head,
         tail='<div id="tip"></div>\n<script>' + TIP_JS + '</script>'),
     "city.html": shell("Brussels internship dashboard &mdash; filterable map | internunion",
-        f"A road map of {len(blist)} organisations in Brussels that host interns, by category: EU "
-        "institutions, NGOs, consultancies, think tanks, law firms and more.", city_body, "/city.html",
-        head_extra='<link rel="stylesheet" href="/vendor/leaflet.css">\n',
-        tail='<script src="/vendor/leaflet.js"></script>\n<script>' + CITY_JS + '</script>'),
+        f"A 3D map of {len(blist)} organisations in Brussels that host interns. Beam height is what "
+        "they pay their trainees: EU institutions, NGOs, consultancies, think tanks, law firms and more.", city_body, "/city.html",
+        head_extra='<link rel="stylesheet" href="/vendor/maplibre-gl.css">\n',
+        tail='<script src="/vendor/maplibre-gl.js"></script>\n<script>' + CITY_JS + '</script>'),
     "submit.html": shell("Submit a place or your internship conditions | internunion",
         "Add a Brussels/EU workplace that hosts interns and tell us the real pay and conditions. No login, "
         "anonymous by default, GDPR-compliant.", submit_body, "/submit.html"),
@@ -914,6 +1182,10 @@ PAGES = {
     "rights.html": shell("Know your rights as an intern in Brussels | internunion",
         "A plain-language guide to intern rights in Brussels: academic vs CIP contracts, the legally indexed "
         "minimum stipend, bogus internships, housing, and where to get help.", rights_body, "/rights.html"),
+    "jobs.html": shell("Open internships in Brussels &mdash; with the pay attached | internunion",
+        "Every open EU traineeship and Brussels internship we can find from official sources, shown next to "
+        "what the employer pays and whether they answered our transparency questionnaire.",
+        jobs_body, "/jobs.html", tail='<script>' + JOBS_JS + '</script>'),
     "blog.html": shell("Blog: intern questions & doubts in Brussels | internunion",
         "Articles on the real questions of interning in Brussels: contracts, pay, housing, and rights.",
         blog_index_body, "/blog.html"),
@@ -936,8 +1208,10 @@ for name, content in PAGES.items():
 (OUT / "sitemap.xml").write_text(sitemap_xml, encoding="utf-8")
 shutil.copyfile(ROOT / "data" / "institutions.csv", OUT / "institutions.csv")
 shutil.copyfile(ROOT / "data" / "countries.csv", OUT / "countries.csv")
-(OUT / "vendor").mkdir(exist_ok=True)                       # vendored Leaflet (roads map)
-for v in ("leaflet.js", "leaflet.css"):
+if VAC.exists(): shutil.copyfile(VAC, OUT / "vacancies.csv")
+shutil.copyfile(ROOT / "assets" / "brussels-buildings.geojson", OUT / "brussels-buildings.geojson")
+(OUT / "vendor").mkdir(exist_ok=True)                       # vendored MapLibre GL (3D city map)
+for v in ("maplibre-gl.js", "maplibre-gl.css"):
     shutil.copyfile(ROOT / "assets" / "vendor" / v, OUT / "vendor" / v)
 
 idx = (OUT / "index.html").read_text(encoding="utf-8")
@@ -946,9 +1220,14 @@ assert len(countries) == 27, f"expected 27 EU countries, got {len(countries)}"
 assert '<svg' in idx and idx.count("<path") >= 27, "Europe map paths missing"
 assert '"@type": "Dataset"' in idx, "Dataset JSON-LD missing"
 assert idx.count("<tr>") == len(countries) + 1, "index should hold only the country table"
-assert 'id="map"' in city and "leaflet.js" in city, "city Leaflet map missing"
+assert 'id="map"' in city and "maplibre-gl.js" in city, "city 3D map missing"
+assert '"beam-cap"' in city or "'beam-cap'" in city, "beam layer missing from city map"
+assert n_beams > 0 and city.count('"k": "c"') + city.count('"k":"c"') == n_beams, "beam caps != beams"
 assert city.count("<tr") == len(blist) + 1, "city list rows != all Brussels orgs"
-assert (OUT / "vendor" / "leaflet.js").exists(), "vendored leaflet missing"
+assert (OUT / "vendor" / "maplibre-gl.js").exists(), "vendored maplibre missing"
+jobs = (OUT / "jobs.html").read_text(encoding="utf-8")
+assert jobs.count('<tr data-level=') == len(vacs), "jobs page rows != vacancies.csv rows"
+assert (OUT / "brussels-buildings.geojson").stat().st_size > 1_000_000, "3D buildings layer missing"
 json.loads(idx.split('application/ld+json">', 1)[1].split("</script>", 1)[0])  # JSON-LD parses
 for p in PAGES:                            # every page has nav, main and footer
     h = (OUT / p).read_text(encoding="utf-8")

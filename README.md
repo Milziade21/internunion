@@ -20,10 +20,14 @@ collectively-bargained internship conditions.
 The homepage is a **Europe choropleth** — each country shaded by intern pay ÷ capital-city room
 rent, grey hatching where there is no legal pay floor — with city pins for coverage (Brussels live,
 other hubs coming soon), and the **accountability ledger**. Projected from a GeoJSON at build time;
-no library. The **Brussels city dashboard** (`/city.html`) is a **Leaflet + OpenStreetMap road map**
-(vendored in `assets/vendor/`): curated orgs as category-coloured pins (EU institutions in blue),
-with the ~3,300 EU Transparency Register orgs behind a toggle (postcode-level, approximate). Category
-chips + pay/status/search filters drive the map and the directory list together. `build.py` also generates `submit`, `questionnaire` (the
+no library. The **Brussels city dashboard** (`/city.html`) is a **3D city map**: MapLibre GL
+(vendored in `assets/vendor/`) over OpenFreeMap's white-and-grey vector tiles, with OpenStreetMap
+buildings extruded. Each precisely-located organisation rises as a **beam** whose height is its
+disclosed monthly stipend, capped by a dot coloured by kind of place; organisations that have not
+disclosed pay are a short grey stub, never a low beam. The ~3,300 EU Transparency Register orgs sit
+behind a toggle as flat dots (postcode-level, approximate). Category chips + pay/status/search
+filters drive the map and the directory list together. `/jobs.html` lists **open internships** next to
+what each employer pays and whether they answered the questionnaire. `build.py` also generates `submit`, `questionnaire` (the
 instrument, published verbatim), `privacy` (GDPR), and `about` pages.
 
 ### Before launch, set four things in [`build.py`](build.py)
@@ -38,6 +42,17 @@ won't deliver and the contact links won't work until set.
 - **[`data/SOURCES.md`](data/SOURCES.md)** — the rent constant, the housing-index method,
   the research method box, and provenance.
 - **[`data/check.py`](data/check.py)** — validates the dataset and computes the housing index.
+- **[`data/vacancies.py`](data/vacancies.py)** — collects open internships from cleared sources only
+  (EPSO's consolidated view, the EU Agencies Network sitemap, employers' own ATS endpoints), files
+  each by required experience, and writes `data/vacancies.csv`. Never touches commercial job boards.
+- **[`data/geocode_precise.py`](data/geocode_precise.py)** — places each office at its street address:
+  an offline exact match against the BeST Address extract (CC BY 4.0), then the keyless UrbIS geocoder
+  (CC0) for the residue. 2,973 of 3,345 Brussels organisations are now pinpointed, up from 55.
+- **[`data/haveyoursay.py`](data/haveyoursay.py)** — finds which organisations are active on a policy
+  file, via the Commission's consultation feedback, joined on Transparency Register number. Discards
+  respondents' personal data at ingest.
+- **[`data/verify_sources.py`](data/verify_sources.py)** — re-opens each stipend's source page and
+  reports whether the figure we publish is still there. A weekly job opens an issue on drift.
 - **[`build.py`](build.py)** — zero-dependency generator: turns the CSV into a static,
   search- and AI-discoverable site (`public/`) with schema.org `Dataset` JSON-LD, `robots.txt`,
   `llms.txt`, `sitemap.xml`, and an answer-first page.
@@ -82,6 +97,23 @@ Median internship stipend in the sample: ~€1400/month. A single room in a Brus
 - [ ] Brussels budget food & drink map
 
 ## Contributing
+
+**Roles are open and small** — about two hours a month, and you do not need to be a developer for
+most of them. See [`MAINTAINERS.md`](MAINTAINERS.md) for what is vacant and
+[claim one here](../../issues/new?template=join.yml). The most useful thing anyone can do right now
+is be a **backup** for an existing role.
+
+| Document | What it settles |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Evidence classes A–D, the response ledger, the checks on every PR |
+| [`GOVERNANCE.md`](GOVERNANCE.md) | How someone joins and earns responsibility, the RFC process, and why this is not a blockchain DAO |
+| [`MAINTAINERS.md`](MAINTAINERS.md) | Who holds which role, and which are vacant |
+| [`AGENTS.md`](AGENTS.md) | Deterministic fetchers do the work; agents only review; no model ever touches the data path |
+| [`SOURCES_POLICY.md`](SOURCES_POLICY.md) | What we may and may not fetch, checked against each operator's terms |
+| [`ACCOUNTS.md`](ACCOUNTS.md) | Which API keys and accounts are actually needed, and the ones we designed away |
+| [`STRATEGY.md`](STRATEGY.md) | The organising plan, allies, language and the 30-minutes-a-day rhythm |
+| [`outreach/employer-emails.md`](outreach/employer-emails.md) | The four-email employer series, published verbatim |
+| [`RESEARCH_PROMPTS.md`](RESEARCH_PROMPTS.md) | Ten deep-research prompts to source the argument |
 
 Corrections and additions welcome — especially first-hand stipend figures and internship
 experiences. Open an issue or a pull request against `data/institutions.csv`. If you're an

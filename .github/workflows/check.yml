@@ -1,0 +1,20 @@
+name: check
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 data/check.py
+      - run: python3 data/verify_sources.py --selftest
+      - run: python3 data/vacancies.py --selftest
+      - run: python3 data/geocode_precise.py --selftest
+      - run: python3 data/haveyoursay.py --selftest
+      - run: python3 build.py

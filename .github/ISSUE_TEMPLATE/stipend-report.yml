@@ -1,0 +1,58 @@
+name: Report an internship stipend
+description: Tell us what an organisation pays its interns in a city we cover. Organisation-level facts only.
+title: "[stipend] <organisation> — <city>"
+labels: [data, stipend-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Do not include your name, e-mail, or anything that identifies you or another person.
+        We publish organisation-level facts only. See CONTRIBUTING.md for how evidence is graded.
+  - type: input
+    id: org
+    attributes: { label: Organisation, placeholder: e.g. European Policy Centre }
+    validations: { required: true }
+  - type: input
+    id: city
+    attributes: { label: City, placeholder: Brussels }
+    validations: { required: true }
+  - type: dropdown
+    id: paid
+    attributes:
+      label: Is the internship paid?
+      options: [yes, partial (expenses or vouchers only), no, unknown]
+    validations: { required: true }
+  - type: input
+    id: stipend
+    attributes: { label: Gross monthly stipend in EUR (full-time), placeholder: "1095" }
+  - type: dropdown
+    id: contract
+    attributes:
+      label: Contract type
+      options: [CIP / professional immersion agreement, academic convention (student), employment contract, other / unknown]
+  - type: input
+    id: year
+    attributes: { label: Which year does this apply to?, placeholder: "2026" }
+    validations: { required: true }
+  - type: dropdown
+    id: evidence
+    attributes:
+      label: Evidence you can point to (see CONTRIBUTING.md)
+      options:
+        - A — a public page of the organisation states it (paste the URL below)
+        - C — I have a contract, offer letter or payslip I can show a maintainer privately
+        - D — first-hand experience, no document
+    validations: { required: true }
+  - type: input
+    id: url
+    attributes: { label: Source URL (for class A), placeholder: https://... }
+  - type: textarea
+    id: notes
+    attributes: { label: Anything else (benefits, hours, duration). No personal data. }
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Consent
+      options:
+        - label: I understand this will be published as open data (CC BY 4.0) at organisation level and contains no personal data.
+          required: true
