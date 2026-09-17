@@ -98,12 +98,22 @@ Median internship stipend in the sample: ~€1400/month. A single room in a Brus
 
 ## Contributing
 
-The full data protocol (evidence classes, response ledger, PR checks) is in [`CONTRIBUTING.md`](CONTRIBUTING.md);
-the organising plan and allies in [`STRATEGY.md`](STRATEGY.md); who owns the data and why it is not a
-blockchain DAO in [`GOVERNANCE.md`](GOVERNANCE.md); what we may and may not fetch in
-[`SOURCES_POLICY.md`](SOURCES_POLICY.md); the employer email series in
-[`outreach/employer-emails.md`](outreach/employer-emails.md); research to run in
-[`RESEARCH_PROMPTS.md`](RESEARCH_PROMPTS.md).
+**Roles are open and small** — about two hours a month, and you do not need to be a developer for
+most of them. See [`MAINTAINERS.md`](MAINTAINERS.md) for what is vacant and
+[claim one here](../../issues/new?template=join.yml). The most useful thing anyone can do right now
+is be a **backup** for an existing role.
+
+| Document | What it settles |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Evidence classes A–D, the response ledger, the checks on every PR |
+| [`GOVERNANCE.md`](GOVERNANCE.md) | How someone joins and earns responsibility, the RFC process, and why this is not a blockchain DAO |
+| [`MAINTAINERS.md`](MAINTAINERS.md) | Who holds which role, and which are vacant |
+| [`AGENTS.md`](AGENTS.md) | Deterministic fetchers do the work; agents only review; no model ever touches the data path |
+| [`SOURCES_POLICY.md`](SOURCES_POLICY.md) | What we may and may not fetch, checked against each operator's terms |
+| [`ACCOUNTS.md`](ACCOUNTS.md) | Which API keys and accounts are actually needed, and the ones we designed away |
+| [`STRATEGY.md`](STRATEGY.md) | The organising plan, allies, language and the 30-minutes-a-day rhythm |
+| [`outreach/employer-emails.md`](outreach/employer-emails.md) | The four-email employer series, published verbatim |
+| [`RESEARCH_PROMPTS.md`](RESEARCH_PROMPTS.md) | Ten deep-research prompts to source the argument |
 
 Corrections and additions welcome — especially first-hand stipend figures and internship
 experiences. Open an issue or a pull request against `data/institutions.csv`. If you're an

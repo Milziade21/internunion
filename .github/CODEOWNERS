@@ -1,0 +1,21 @@
+# Per-area ownership. GitHub requests these reviewers automatically on a pull request.
+# This is how "each chapter owns its rows" is enforced by the tooling rather than by good manners.
+# A city lead is added next to their city's files when they take the role (MAINTAINERS.md).
+
+# Everything, until specific owners exist
+*                           @Milziade21
+
+# The method: the questionnaire text, the four states, the evidence classes, the sourcing rules.
+# Changing any of these changes what every published figure means, so it needs the RFC in GOVERNANCE.md.
+/CONTRIBUTING.md            @Milziade21
+/SOURCES_POLICY.md          @Milziade21
+/GOVERNANCE.md              @Milziade21
+/AGENTS.md                  @Milziade21
+
+# The dataset
+/data/institutions.csv      @Milziade21
+/data/countries.csv         @Milziade21
+
+# Licences and legal surface
+/LICENSE                    @Milziade21
+/MAINTAINERS.md             @Milziade21

@@ -14,4 +14,7 @@ jobs:
           python-version: "3.12"
       - run: python3 data/check.py
       - run: python3 data/verify_sources.py --selftest
+      - run: python3 data/vacancies.py --selftest
+      - run: python3 data/geocode_precise.py --selftest
+      - run: python3 data/haveyoursay.py --selftest
       - run: python3 build.py
